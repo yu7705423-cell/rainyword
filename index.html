@@ -344,9 +344,27 @@
 .progress-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .progress-label { font-size: 14px; font-weight: 500; }
 .progress-fraction { font-size: 14px; color: var(--text-muted); }
-.progress-bar-bg { width: 100%; height: 6px; background: #F3F4F6; border-radius: 6px; overflow: hidden; }
-.progress-bar-fill { height: 100%; background: var(--text-main); border-radius: 6px; transition: width 0.4s ease; }
-.progress-stats { display: flex; justify-content: space-between; margin-top: 12px; font-size: 12px; color: var(--text-muted); }
+.progress-bar-bg { position: relative; width: 100%; height: 6px; background: #F3F4F6; border-radius: 6px; overflow: hidden; }
+.progress-bar-fill { height: 100%; background: var(--text-main); border-radius: 6px; transition: width 0.4s ease; opacity: 0.35; }
+.progress-bar-master { position: absolute; left: 0; top: 0; height: 100%; background: var(--text-main); border-radius: 6px; transition: width 0.4s ease; }
+.progress-stats { display: flex; justify-content: space-between; margin-top: 12px; font-size: 12px; color: var(--text-muted); gap: 6px; flex-wrap: wrap; }
+.wb-lang-tag { display: inline-block; margin-left: 6px; padding: 1px 6px; font-size: 11px; font-weight: 400; color: var(--text-muted); background: #F3F4F6; border-radius: 6px; vertical-align: middle; }
+.speak-btn { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: none; border-radius: 50%; background: #F3F4F6; color: var(--text-main); cursor: pointer; flex-shrink: 0; transition: transform 0.15s ease, background 0.2s ease; padding: 0; }
+.speak-btn:active { transform: scale(0.9); }
+.speak-btn.speaking { background: var(--text-main); color: #fff; animation: speakPulse 0.9s ease-in-out infinite; }
+@keyframes speakPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+.speak-btn-sm { width: 26px; height: 26px; background: transparent; color: var(--text-muted); }
+.study-word-row { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.study-example-row { display: flex; align-items: flex-start; justify-content: center; gap: 6px; }
+.spelling-hint-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
+.spelling-msg { font-size: 12px; color: var(--text-muted); min-height: 16px; }
+.spelling-reveal-btn { font-size: 12px; color: var(--text-muted); background: #F3F4F6; border: none; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+.msg-translation { margin-top: 4px; }
+.msg-trans-toggle { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-muted); background: rgba(0,0,0,0.04); border: none; border-radius: 8px; padding: 3px 8px; cursor: pointer; }
+.msg-trans-toggle .arrow { transition: transform 0.2s ease; display: inline-block; }
+.msg-trans-toggle.open .arrow { transform: rotate(90deg); }
+.msg-trans-body { display: none; margin-top: 4px; padding: 8px 10px; font-size: 13px; line-height: 1.6; color: var(--text-muted); background: rgba(0,0,0,0.035); border-radius: 10px; white-space: pre-wrap; }
+.msg-trans-body.open { display: block; }
 .progress-stats b { color: var(--text-main); }
 /* ===== 词书管理 ===== */
 .wb-section-title { font-size: 13px; font-weight: 600; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 10px; text-transform: uppercase; }
@@ -2148,17 +2166,23 @@ body.theme-glass .chat-messages {
 <!-- 学习进度条 -->
   <div class="progress-card" id="progress-card" style="display:none;">
     <div class="progress-row">
-      <span class="progress-label">今日进度</span>
+      <span class="progress-label">学习进度</span>
       <span class="progress-fraction" id="progress-fraction">0 / 0</span>
     </div>
     <div class="progress-bar-bg">
       <div class="progress-bar-fill" id="progress-bar-fill" style="width:0%"></div>
+      <div class="progress-bar-master" id="progress-bar-master" style="width:0%"></div>
     </div>
     <div class="progress-stats">
       <span id="stat-unseen">未学 <b>0</b></span>
       <span id="stat-learning">学习中 <b>0</b></span>
-      <span id="stat-learned">已学 <b>0</b></span>
-      <span id="stat-review">待复习 <b>0</b></span>
+      <span id="stat-reviewing">复习中 <b>0</b></span>
+      <span id="stat-learned">已掌握 <b>0</b></span>
+    </div>
+    <div class="progress-stats" style="margin-top:6px;">
+      <span id="stat-review">今日待复习 <b>0</b></span>
+      <span id="stat-today">今日新学 <b>0</b></span>
+      <span id="stat-accuracy">正确率 <b>—</b></span>
     </div>
   </div>
 
@@ -2274,6 +2298,10 @@ body.theme-glass .chat-messages {
 </div>
 
     
+<div class="menu-item" onclick="openSubPage('lang-settings')">
+  <span>语言与翻译</span>
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+</div>
 <div class="menu-item" onclick="openSubPage('focus-settings')">
   <span>专注与拼写设置</span>
   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
@@ -2495,18 +2523,41 @@ body.theme-glass .chat-messages {
 
     <!-- 单词卡片 -->
     <div class="study-card" id="study-card" onclick="tapStudyCard()">
-    <div class="study-word" id="study-word" onclick="speakWord(this.textContent)" style="cursor:pointer;" title="点击朗读">---</div>
+    <div class="study-word-row">
+      <div class="study-word" id="study-word" onclick="speakCurrentWord(event)" style="cursor:pointer;" title="点击朗读">---</div>
+      <button type="button" class="speak-btn" id="study-speak-btn" onclick="speakCurrentWord(event)" title="朗读单词" aria-label="朗读单词">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H3v6h3l5 4V5z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>
+        </svg>
+      </button>
+    </div>
 
       <div class="study-phonetic" id="study-phonetic"></div>
       <div class="study-pos" id="study-pos"></div>
       <div class="study-divider"></div>
       <div class="study-translation" id="study-translation"></div>
     <div id="spelling-area" class="spelling-area" style="display:none;">
-        <input type="text" id="spelling-input" class="spelling-input" placeholder="输入拼写" autocomplete="off" oninput="checkSpelling(this.value)">
+        <input type="text" id="spelling-input" class="spelling-input" placeholder="输入拼写" autocomplete="off"
+               autocapitalize="off" autocorrect="off" spellcheck="false"
+               oninput="checkSpelling(this.value)" onkeydown="onSpellingKeydown(event)">
         <div id="spelling-placeholder" class="spelling-placeholder"></div>
+        <div class="spelling-hint-row">
+          <span class="spelling-msg" id="spelling-msg"></span>
+          <button type="button" class="spelling-reveal-btn" onclick="revealSpellingAnswer()">显示答案</button>
+        </div>
     </div>
 
-      <div class="study-example" id="study-example"></div>
+      <div class="study-example-row">
+        <div class="study-example" id="study-example"></div>
+        <button type="button" class="speak-btn speak-btn-sm" id="study-example-speak" onclick="speakCurrentExample(event)"
+                style="display:none;" title="朗读例句" aria-label="朗读例句">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H3v6h3l5 4V5z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.5 8.5a5 5 0 0 1 0 7"/>
+          </svg>
+        </button>
+      </div>
       <div class="study-tap-hint">点击卡片翻转</div>
     </div>
 
@@ -2558,7 +2609,9 @@ body.theme-glass .chat-messages {
     <span class="wfilter active" onclick="setWordFilter('all', this)">全部</span>
     <span class="wfilter" onclick="setWordFilter('unseen', this)">未学</span>
     <span class="wfilter" onclick="setWordFilter('learning', this)">学习中</span>
-    <span class="wfilter" onclick="setWordFilter('learned', this)">已学</span>
+    <span class="wfilter" onclick="setWordFilter('reviewing', this)">复习中</span>
+    <span class="wfilter" onclick="setWordFilter('mastered', this)">已掌握</span>
+    <span class="wfilter" onclick="setWordFilter('due', this)">待复习</span>
   </div>
   <div class="sub-page-content" style="padding:0;">
     <div id="wordlist-body" style="padding-bottom:40px;"></div>
@@ -3026,6 +3079,18 @@ body.theme-glass .chat-messages {
   </div>
 
    <div id="chat-more-menu" class="chat-more-menu">
+    <div class="chat-more-item" onclick="chatMoreAction('toggle-translation')">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 5h12M9 3v2m1.5 12L6 8l-3 9m9-4h9m-4.5 0l-3 8m3-8l3 8"/>
+      </svg>
+      <span id="toggle-translation-label">开启对话翻译</span>
+    </div>
+    <div class="chat-more-item" onclick="chatMoreAction('toggle-all-translations')">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+      </svg>
+      展开 / 折叠全部翻译
+    </div>
     <div class="chat-more-item" onclick="chatMoreAction('vocab-list')">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h10"/>
@@ -3288,8 +3353,8 @@ body.theme-glass .chat-messages {
     <!-- 故事内容 -->
     <div id="story-content-area" style="display:none;">
       <div class="story-lang-toggle">
-        <button class="story-lang-btn active" onclick="switchStoryLang('en',this)">English</button>
-        <button class="story-lang-btn" onclick="switchStoryLang('zh',this)">中文</button>
+        <button class="story-lang-btn active" id="story-lang-btn-src" onclick="switchStoryLang('en',this)">原文</button>
+        <button class="story-lang-btn" id="story-lang-btn-tr" onclick="switchStoryLang('zh',this)">翻译</button>
       </div>
       <div class="story-body" id="story-body"></div>
       <div class="story-end-actions">
@@ -3790,7 +3855,15 @@ if (!DB.get('userProfiles')) DB.set('userProfiles', []);
       aiMode: 'dialogue',
       injectOrder: ['system','character','memory','worldbook'],
       activeChatCss: '',
-      activeGlobalCss: ''
+      activeGlobalCss: '',
+      learnLang: 'en',
+      nativeLang: 'zh',
+      translationEnabled: false,
+      translationDefaultOpen: false,
+      voiceSource: 'auto',
+      voiceAccent: 'us',
+      voiceRate: 0.9,
+      autoSpeak: false
     });
   } else {
     const s = DB.get('appSettings');
@@ -3804,6 +3877,14 @@ if (!s.hasOwnProperty('showStudyMsgsInHistory')) {
 }
 
     if (!s.hasOwnProperty('activeProfileId'))  { s.activeProfileId = null; changed = true; }
+    if (!s.hasOwnProperty('learnLang'))        { s.learnLang = 'en'; changed = true; }
+    if (!s.hasOwnProperty('nativeLang'))       { s.nativeLang = 'zh'; changed = true; }
+    if (!s.hasOwnProperty('translationEnabled'))     { s.translationEnabled = false; changed = true; }
+    if (!s.hasOwnProperty('translationDefaultOpen')) { s.translationDefaultOpen = false; changed = true; }
+    if (!s.hasOwnProperty('voiceSource'))      { s.voiceSource = 'auto'; changed = true; }
+    if (!s.hasOwnProperty('voiceAccent'))      { s.voiceAccent = 'us'; changed = true; }
+    if (!s.hasOwnProperty('voiceRate'))        { s.voiceRate = 0.9; changed = true; }
+    if (!s.hasOwnProperty('autoSpeak'))        { s.autoSpeak = false; changed = true; }
     if (!s.hasOwnProperty('activeChatCss'))    { s.activeChatCss = ''; changed = true; }
     if (!s.hasOwnProperty('activeGlobalCss'))  { s.activeGlobalCss = ''; changed = true; }
     if (changed) DB.set('appSettings', s);
@@ -3949,10 +4030,7 @@ function updateWordSelectorPreview() {
     });
   } else if (selectedWordSource === 'random') {
     const n = parseInt(document.getElementById('wsel-random-n').value) || 0;
-    const allLearned = words.filter(w => {
-  const p = progress[w.id];
-  return p && (p.status === 'reviewed' || p.status === 'learned' || p.status === 'learning');
-});
+    const allLearned = words.filter(w => wordStatus(progress[w.id]).bucket !== 'unseen');
     pool = allLearned.sort(() => Math.random() - 0.5).slice(0, n);
   }
 
@@ -4463,6 +4541,48 @@ function wbReorder(srcId, targetId) {
 // 切换到档案袋时也刷新世界书
 // ============ 档案袋：世界书模块 END ============
 // ============ 单词页：初始化 ============
+let _wordbookLoading = false;
+
+// ============ 学习状态与统计（统一口径） ============
+const SRS_CONF = { MASTER_REPS: 4, MASTER_INTERVAL: 21, MAX_INTERVAL: 365, EF_MIN: 1.3, EF_MAX: 2.8 };
+
+function isMasteredProgress(p) {
+  if (!p) return false;
+  if (p.status === 'learned' && !p.repetitions) return true;   // 兼容旧数据
+  return (p.repetitions || 0) >= SRS_CONF.MASTER_REPS && (p.interval || 0) >= SRS_CONF.MASTER_INTERVAL;
+}
+
+// 返回 { bucket: 'unseen'|'learning'|'reviewing'|'mastered', due: boolean }
+function wordStatus(p, now) {
+  now = now || Date.now();
+  if (!p || !p.status || p.status === 'unseen') return { bucket: 'unseen', due: false };
+  if (p.status === 'learning') return { bucket: 'learning', due: true };
+  const due = !p.nextReview || p.nextReview <= now;
+  return { bucket: isMasteredProgress(p) ? 'mastered' : 'reviewing', due: due };
+}
+
+function computeWordbookStats(wb) {
+  const progress = DB.get('wordProgress') || {};
+  const words = (wb && wb.words) || [];
+  const now = Date.now();
+  const todayStart = new Date(new Date().toDateString()).getTime();
+  const st = { total: words.length, unseen: 0, learning: 0, reviewing: 0, mastered: 0, due: 0, newToday: 0, accuracy: null };
+  let correct = 0, wrong = 0;
+  words.forEach(w => {
+    const p = progress[w.id];
+    const s = wordStatus(p, now);
+    st[s.bucket]++;
+    if (s.bucket !== 'unseen' && s.bucket !== 'learning' && s.due) st.due++;
+    if (p) {
+      if (p.firstLearnedAt && p.firstLearnedAt >= todayStart) st.newToday++;
+      correct += p.correctCount || 0;
+      wrong += p.wrongCount || 0;
+    }
+  });
+  if (correct + wrong > 0) st.accuracy = Math.round(correct / (correct + wrong) * 100);
+  return st;
+}
+
 function initWordsTab() {
   const settings = DB.get('appSettings');
 
@@ -4489,39 +4609,40 @@ function initWordsTab() {
     document.getElementById('words-empty').style.display = 'block';
     document.getElementById('progress-card').style.display = 'none';
     document.getElementById('words-start').style.display = 'none';
+    // 远程词书尚未缓存：后台拉取，成功后自动刷新
+    const pendingMeta = BUILTIN_WORDBOOKS_META.find(m => m.id === settings.activeWordbookId);
+    if (pendingMeta && !_wordbookLoading) {
+      _wordbookLoading = true;
+      document.getElementById('words-empty').textContent = '正在加载词书…';
+      fetchWordbook(pendingMeta).then(ok => {
+        _wordbookLoading = false;
+        document.getElementById('words-empty').textContent = ok ? '' : '词书加载失败，请检查网络或换一本词书';
+        if (ok) initWordsTab();
+      });
+    }
     return;
   }
 
   // 统计进度
-  const progress = DB.get('wordProgress') || {};
-  const words = activeWb.words || [];
-    let unseen = 0, learning = 0, learned = 0, review = 0;
-  const now = Date.now();
-  words.forEach(w => {
-    const p = progress[w.id];
-    if (!p || p.status === 'unseen') {
-      unseen++;
-    } else if (p.status === 'learning') {
-      learning++;
-    } else if (p.status === 'learned') {
-      learned++;
-    } else if (p.status === 'reviewed') {
-      if (p.nextReview && p.nextReview <= now) {
-        review++;
-      } else {
-        learned++;
-      }
-    }
-  });
+  const st = computeWordbookStats(activeWb);
+  const total = st.total;
+  const studied = st.learning + st.reviewing + st.mastered;
 
-  const total = words.length;
-  const done = learned;
-  document.getElementById('progress-fraction').textContent = `${done} / ${total}`;
-  document.getElementById('progress-bar-fill').style.width = total > 0 ? (done / total * 100) + '%' : '0%';
-  document.getElementById('stat-unseen').innerHTML = `未学 <b>${unseen}</b>`;
-  document.getElementById('stat-learning').innerHTML = `学习中 <b>${learning}</b>`;
-  document.getElementById('stat-learned').innerHTML = `已学 <b>${learned}</b>`;
-  document.getElementById('stat-review').innerHTML = `待复习 <b>${review}</b>`;
+  document.getElementById('progress-fraction').textContent = `${studied} / ${total}`;
+  document.getElementById('progress-bar-fill').style.width = total > 0 ? (studied / total * 100) + '%' : '0%';
+  const masterBar = document.getElementById('progress-bar-master');
+  if (masterBar) masterBar.style.width = total > 0 ? (st.mastered / total * 100) + '%' : '0%';
+
+  document.getElementById('stat-unseen').innerHTML = `未学 <b>${st.unseen}</b>`;
+  document.getElementById('stat-learning').innerHTML = `学习中 <b>${st.learning}</b>`;
+  const reviewingEl = document.getElementById('stat-reviewing');
+  if (reviewingEl) reviewingEl.innerHTML = `复习中 <b>${st.reviewing}</b>`;
+  document.getElementById('stat-learned').innerHTML = `已掌握 <b>${st.mastered}</b>`;
+  document.getElementById('stat-review').innerHTML = `今日待复习 <b>${st.due}</b>`;
+  const todayEl = document.getElementById('stat-today');
+  if (todayEl) todayEl.innerHTML = `今日新学 <b>${st.newToday}</b>`;
+  const accEl = document.getElementById('stat-accuracy');
+  if (accEl) accEl.innerHTML = `正确率 <b>${st.accuracy === null ? '—' : st.accuracy + '%'}</b>`;
 
   document.getElementById('words-empty').style.display = 'none';
 document.getElementById('progress-card').style.display = 'block';
@@ -4536,39 +4657,664 @@ renderCheckinBar();
 // ============ 单词页：初始化 END ============
 
 // ============ 词书管理模块 ============
+// ---------- 语言配置（多语种支持） ----------
+const LANG_META = {
+  en: { name: '英语',     speech: 'en-US', quizHint: 'word' },
+  ja: { name: '日语',     speech: 'ja-JP', quizHint: 'word' },
+  ko: { name: '韩语',     speech: 'ko-KR', quizHint: 'word' },
+  fr: { name: '法语',     speech: 'fr-FR', quizHint: 'word' },
+  es: { name: '西班牙语', speech: 'es-ES', quizHint: 'word' },
+  de: { name: '德语',     speech: 'de-DE', quizHint: 'word' },
+  it: { name: '意大利语', speech: 'it-IT', quizHint: 'word' },
+  ru: { name: '俄语',     speech: 'ru-RU', quizHint: 'word' },
+  pt: { name: '葡萄牙语', speech: 'pt-PT', quizHint: 'word' },
+  zh: { name: '中文',     speech: 'zh-CN', quizHint: 'word' }
+};
+function getLangName(code) { return (LANG_META[code] || {}).name || code || '未知'; }
+function getLangSpeech(code) { return (LANG_META[code] || {}).speech || 'en-US'; }
+// 当前学习语言 / 释义语言
+function getLearnLang() {
+  const s = DB.get('appSettings') || {};
+  const wb = s.activeWordbookId ? getWordbookMetaLang(s.activeWordbookId) : null;
+  return wb || s.learnLang || 'en';
+}
+function getNativeLang() { return (DB.get('appSettings') || {}).nativeLang || 'zh'; }
+function getWordbookMetaLang(id) {
+  const meta = BUILTIN_WORDBOOKS_META.find(m => m.id === id);
+  if (meta) return meta.lang || 'en';
+  const custom = (DB.get('wordbooks') || []).find(w => w.id === id);
+  return custom ? (custom.lang || null) : null;
+}
+
+// ---------- 内置离线词库（开源常用词表，无需联网） ----------
+// 数据格式：word|phonetic|pos|translation|example
+const OFFLINE_WORD_DATA = {
+  offline_en_core: `hello|/həˈloʊ/|int.|你好；喂|Hello, nice to meet you.
+world|/wɜːrld/|n.|世界|The world is changing fast.
+people|/ˈpiːpl/|n.|人们；人民|Many people came to the party.
+time|/taɪm/|n.|时间；次数|We don't have much time left.
+year|/jɪr/|n.|年；年份|She moved here last year.
+day|/deɪ/|n.|天；白天|It was a beautiful day.
+work|/wɜːrk/|v./n.|工作；起作用|He works in a hospital.
+study|/ˈstʌdi/|v./n.|学习；研究|I study English every morning.
+school|/skuːl/|n.|学校|My school is near the park.
+student|/ˈstuːdnt/|n.|学生|She is a hard-working student.
+teacher|/ˈtiːtʃər/|n.|老师|Our teacher explained it clearly.
+friend|/frend/|n.|朋友|He is my best friend.
+family|/ˈfæməli/|n.|家庭；家人|My family lives in Beijing.
+home|/hoʊm/|n./adv.|家；在家|I want to go home now.
+water|/ˈwɔːtər/|n.|水|Please drink more water.
+food|/fuːd/|n.|食物|The food here is delicious.
+money|/ˈmʌni/|n.|钱|He saved a lot of money.
+city|/ˈsɪti/|n.|城市|Shanghai is a huge city.
+country|/ˈkʌntri/|n.|国家；乡村|China is a large country.
+book|/bʊk/|n.|书；预订|I borrowed a book from the library.
+problem|/ˈprɑːbləm/|n.|问题；难题|We solved the problem together.
+question|/ˈkwestʃən/|n.|问题；疑问|May I ask you a question?
+answer|/ˈænsər/|v./n.|回答；答案|Nobody could answer the question.
+change|/tʃeɪndʒ/|v./n.|改变；零钱|The weather changed suddenly.
+help|/help/|v./n.|帮助|Can you help me with this?
+learn|/lɜːrn/|v.|学会；得知|Children learn very quickly.
+teach|/tiːtʃ/|v.|教；讲授|She teaches math at a high school.
+think|/θɪŋk/|v.|想；认为|I think you are right.
+know|/noʊ/|v.|知道；认识|I know what you mean.
+understand|/ˌʌndərˈstænd/|v.|理解；明白|I don't understand this sentence.
+remember|/rɪˈmembər/|v.|记得；想起|Do you remember his name?
+forget|/fərˈɡet/|v.|忘记|Don't forget to lock the door.
+important|/ɪmˈpɔːrtnt/|adj.|重要的|This is an important decision.
+different|/ˈdɪfrənt/|adj.|不同的|Their opinions are quite different.
+difficult|/ˈdɪfɪkəlt/|adj.|困难的|The exam was very difficult.
+easy|/ˈiːzi/|adj.|容易的|The question was easy for him.
+beautiful|/ˈbjuːtɪfl/|adj.|美丽的|What a beautiful garden!
+happy|/ˈhæpi/|adj.|快乐的|She looks happy today.
+sad|/sæd/|adj.|难过的|He felt sad after the news.
+tired|/ˈtaɪərd/|adj.|疲倦的|I'm too tired to walk.
+busy|/ˈbɪzi/|adj.|忙碌的|She is busy preparing for exams.
+early|/ˈɜːrli/|adj./adv.|早的；早地|He gets up early every day.
+late|/leɪt/|adj./adv.|迟的；晚地|Sorry, I'm late again.
+begin|/bɪˈɡɪn/|v.|开始|The film begins at seven.
+finish|/ˈfɪnɪʃ/|v.|完成；结束|I finished my homework.
+continue|/kənˈtɪnjuː/|v.|继续|Let's continue the discussion.
+develop|/dɪˈveləp/|v.|发展；开发|The city developed rapidly.
+improve|/ɪmˈpruːv/|v.|改善；提高|I want to improve my English.
+increase|/ɪnˈkriːs/|v./n.|增加|Prices increased sharply.
+reduce|/rɪˈduːs/|v.|减少|We must reduce the cost.
+create|/kriˈeɪt/|v.|创造|They created a new app.
+provide|/prəˈvaɪd/|v.|提供|The hotel provides free breakfast.
+receive|/rɪˈsiːv/|v.|收到|I received your email.
+decide|/dɪˈsaɪd/|v.|决定|She decided to stay home.
+choose|/tʃuːz/|v.|选择|You can choose any color.
+prepare|/prɪˈper/|v.|准备|I'm preparing for the test.
+explain|/ɪkˈspleɪn/|v.|解释|Let me explain it again.
+describe|/dɪˈskraɪb/|v.|描述|Can you describe the man?
+suggest|/səˈdʒest/|v.|建议|I suggest taking a break.
+agree|/əˈɡriː/|v.|同意|I totally agree with you.
+refuse|/rɪˈfjuːz/|v.|拒绝|He refused to help us.
+accept|/əkˈsept/|v.|接受|She accepted the invitation.
+believe|/bɪˈliːv/|v.|相信|I can't believe this news.
+worry|/ˈwɜːri/|v./n.|担心|Don't worry about the result.
+enjoy|/ɪnˈdʒɔɪ/|v.|享受|We enjoyed the concert.
+travel|/ˈtrævl/|v./n.|旅行|They travel abroad every summer.
+arrive|/əˈraɪv/|v.|到达|The train arrived on time.
+leave|/liːv/|v.|离开；留下|He left without saying goodbye.
+return|/rɪˈtɜːrn/|v./n.|返回；归还|Please return the book tomorrow.
+visit|/ˈvɪzɪt/|v./n.|拜访|We visited our grandparents.
+meet|/miːt/|v.|遇见；会面|Let's meet at the station.
+talk|/tɔːk/|v./n.|谈话|We talked for an hour.
+speak|/spiːk/|v.|说；讲|Can you speak more slowly?
+listen|/ˈlɪsn/|v.|听|Listen to me carefully.
+write|/raɪt/|v.|写|She wrote a long letter.
+read|/riːd/|v.|阅读|I read the news every morning.
+watch|/wɑːtʃ/|v./n.|观看；手表|We watched a movie last night.
+play|/pleɪ/|v./n.|玩；播放|The kids play in the yard.
+run|/rʌn/|v.|跑；经营|He runs five kilometers daily.
+walk|/wɔːk/|v./n.|走路|Let's walk to the park.
+buy|/baɪ/|v.|买|I bought a new phone.
+sell|/sel/|v.|卖|They sell fresh fruit here.
+build|/bɪld/|v.|建造|They are building a bridge.
+open|/ˈoʊpən/|v./adj.|打开；开着的|The shop opens at nine.
+close|/kloʊz/|v./adj.|关闭；接近的|Please close the window.
+start|/stɑːrt/|v./n.|开始；启动|The car won't start.
+stop|/stɑːp/|v./n.|停止；车站|The rain stopped at noon.
+follow|/ˈfɑːloʊ/|v.|跟随；遵循|Follow the instructions carefully.
+happen|/ˈhæpən/|v.|发生|What happened yesterday?
+appear|/əˈpɪr/|v.|出现；显得|A rainbow appeared in the sky.
+seem|/siːm/|v.|似乎|She seems very confident.
+become|/bɪˈkʌm/|v.|变成|He became a doctor.
+grow|/ɡroʊ/|v.|生长；增长|The company grew quickly.
+carry|/ˈkæri/|v.|搬运；携带|Let me carry your bag.
+hold|/hoʊld/|v.|拿着；举行|She held the baby gently.
+keep|/kiːp/|v.|保持；保存|Keep the room clean.
+break|/breɪk/|v./n.|打破；休息|He broke the glass.
+lose|/luːz/|v.|丢失；输|Don't lose your ticket.
+win|/wɪn/|v.|赢得|Our team won the game.
+try|/traɪ/|v./n.|尝试|Try again next time.
+practice|/ˈpræktɪs/|v./n.|练习|Practice makes perfect.`,
+  offline_ja_n5: `私|watashi|代|我|私は学生です。
+あなた|anata|代|你|あなたの名前は何ですか。
+先生|sensei|名|老师|田中先生はやさしいです。
+学生|gakusei|名|学生|彼は大学の学生です。
+学校|gakkou|名|学校|学校へ行きます。
+友達|tomodachi|名|朋友|友達と映画を見ます。
+家族|kazoku|名|家人|家族と旅行しました。
+家|ie|名|家|家に帰ります。
+水|mizu|名|水|水を飲みたいです。
+食べ物|tabemono|名|食物|好きな食べ物は何ですか。
+お金|okane|名|钱|お金が足りません。
+時間|jikan|名|时间|時間がありません。
+今日|kyou|名|今天|今日は暑いですね。
+明日|ashita|名|明天|明日会いましょう。
+昨日|kinou|名|昨天|昨日は雨でした。
+朝|asa|名|早上|毎朝六時に起きます。
+夜|yoru|名|夜晚|夜は静かです。
+仕事|shigoto|名|工作|仕事が忙しいです。
+勉強|benkyou|名/动|学习|毎日日本語を勉強します。
+食べる|taberu|动|吃|朝ごはんを食べます。
+飲む|nomu|动|喝|お茶を飲みます。
+行く|iku|动|去|駅へ行きます。
+来る|kuru|动|来|友達が来ます。
+帰る|kaeru|动|回去|六時に帰ります。
+見る|miru|动|看|テレビを見ます。
+聞く|kiku|动|听；问|音楽を聞きます。
+話す|hanasu|动|说|日本語を話せますか。
+読む|yomu|动|读|本を読みます。
+書く|kaku|动|写|手紙を書きます。
+買う|kau|动|买|パンを買いました。
+作る|tsukuru|动|制作|料理を作ります。
+起きる|okiru|动|起床|七時に起きます。
+寝る|neru|动|睡觉|早く寝てください。
+働く|hataraku|动|工作|会社で働いています。
+休む|yasumu|动|休息|今日は休みます。
+覚える|oboeru|动|记住|単語を覚えます。
+忘れる|wasureru|动|忘记|傘を忘れました。
+分かる|wakaru|动|明白|意味が分かりません。
+好き|suki|形动|喜欢|音楽が好きです。
+嫌い|kirai|形动|讨厌|野菜が嫌いです。
+大きい|ookii|形|大的|大きい荷物ですね。
+小さい|chiisai|形|小的|小さい犬を飼っています。
+新しい|atarashii|形|新的|新しい携帯を買いました。
+古い|furui|形|旧的|この本は古いです。
+高い|takai|形|高的；贵的|この店は高いです。
+安い|yasui|形|便宜的|安いお店を知っています。
+面白い|omoshiroi|形|有趣的|この映画は面白いです。
+難しい|muzukashii|形|难的|試験は難しかったです。
+簡単|kantan|形动|简单|操作は簡単です。
+忙しい|isogashii|形|忙的|今週は忙しいです。
+楽しい|tanoshii|形|快乐的|旅行は楽しかったです。
+元気|genki|形动|精神好|お元気ですか。
+静か|shizuka|形动|安静|静かにしてください。
+きれい|kirei|形动|漂亮；干净|部屋がきれいですね。
+少し|sukoshi|副|一点|少し疲れました。
+たくさん|takusan|副|很多|質問がたくさんあります。
+いつも|itsumo|副|总是|いつも早く来ます。
+時々|tokidoki|副|有时|時々散歩します。
+ちょっと|chotto|副|稍微|ちょっと待ってください。
+ありがとう|arigatou|寒暄|谢谢|本当にありがとう。`,
+  offline_ko_basic: `안녕하세요|annyeonghaseyo|寒暄|你好|안녕하세요, 반갑습니다.
+감사합니다|gamsahamnida|寒暄|谢谢|도와주셔서 감사합니다.
+저|jeo|代|我（谦）|저는 학생이에요.
+당신|dangsin|代|你|당신의 이름은 뭐예요?
+친구|chingu|名|朋友|친구와 영화를 봤어요.
+가족|gajok|名|家人|가족과 함께 살아요.
+선생님|seonsaengnim|名|老师|선생님께 여쭤보세요.
+학생|haksaeng|名|学生|저는 대학생이에요.
+학교|hakgyo|名|学校|학교에 가요.
+집|jip|名|家|집에 가고 싶어요.
+물|mul|名|水|물 좀 주세요.
+음식|eumsik|名|食物|한국 음식을 좋아해요.
+돈|don|名|钱|돈이 없어요.
+시간|sigan|名|时间|시간이 있어요?
+오늘|oneul|名|今天|오늘 날씨가 좋아요.
+내일|naeil|名|明天|내일 만나요.
+어제|eoje|名|昨天|어제 비가 왔어요.
+아침|achim|名|早上|아침을 먹었어요.
+밤|bam|名|夜晚|밤에 공부해요.
+일|il|名|工作；事情|일이 많아요.
+공부|gongbu|名/动|学习|한국어를 공부해요.
+먹다|meokda|动|吃|밥을 먹어요.
+마시다|masida|动|喝|커피를 마셔요.
+가다|gada|动|去|학교에 가요.
+오다|oda|动|来|친구가 와요.
+보다|boda|动|看|영화를 봐요.
+듣다|deutda|动|听|음악을 들어요.
+말하다|malhada|动|说|천천히 말해 주세요.
+읽다|ikda|动|读|책을 읽어요.
+쓰다|sseuda|动|写；用|편지를 써요.
+사다|sada|动|买|빵을 샀어요.
+만들다|mandeulda|动|做；制作|음식을 만들어요.
+자다|jada|动|睡觉|일찍 자요.
+일어나다|ireonada|动|起床|여섯 시에 일어나요.
+알다|alda|动|知道|저는 그 사람을 알아요.
+모르다|moreuda|动|不知道|잘 모르겠어요.
+좋다|jota|形|好|날씨가 좋아요.
+나쁘다|nappeuda|形|坏|기분이 나빠요.
+크다|keuda|形|大|가방이 커요.
+작다|jakda|形|小|방이 작아요.
+많다|manta|形|多|사람이 많아요.
+적다|jeokda|形|少|시간이 적어요.
+비싸다|bissada|形|贵|이 옷은 비싸요.
+싸다|ssada|形|便宜|과일이 싸요.
+어렵다|eoryeopda|形|难|시험이 어려워요.
+쉽다|swipda|形|容易|문제가 쉬워요.
+바쁘다|bappeuda|形|忙|요즘 바빠요.
+재미있다|jaemiitda|形|有趣|이 책은 재미있어요.
+예쁘다|yeppeuda|形|漂亮|꽃이 예뻐요.
+조용하다|joyonghada|形|安静|도서관은 조용해요.
+아주|aju|副|非常|아주 좋아요.
+조금|jogeum|副|一点|조금 피곤해요.
+정말|jeongmal|副|真的|정말 고마워요.
+빨리|ppalli|副|快|빨리 오세요.
+천천히|cheoncheonhi|副|慢慢地|천천히 말해 주세요.
+같이|gachi|副|一起|같이 갈까요?
+지금|jigeum|副|现在|지금 어디예요?
+그리고|geurigo|连|而且|밥을 먹고 그리고 쉬었어요.
+하지만|hajiman|连|但是|비싸요. 하지만 좋아요.
+왜|wae|副|为什么|왜 늦었어요?`,
+  offline_fr_basic: `bonjour|/bɔ̃.ʒuʁ/|interj.|你好|Bonjour, comment allez-vous ?
+merci|/mɛʁ.si/|interj.|谢谢|Merci beaucoup pour ton aide.
+ami|/a.mi/|n.m.|朋友|C'est mon meilleur ami.
+famille|/fa.mij/|n.f.|家庭|Ma famille habite à Lyon.
+maison|/mɛ.zɔ̃/|n.f.|房子；家|Je rentre à la maison.
+école|/e.kɔl/|n.f.|学校|Les enfants vont à l'école.
+livre|/livʁ/|n.m.|书|J'ai lu un livre intéressant.
+eau|/o/|n.f.|水|Je voudrais un verre d'eau.
+temps|/tɑ̃/|n.m.|时间；天气|Je n'ai pas le temps.
+jour|/ʒuʁ/|n.m.|天；白天|Quel beau jour !
+année|/a.ne/|n.f.|年|Bonne année !
+travail|/tʁa.vaj/|n.m.|工作|Mon travail est difficile.
+argent|/aʁ.ʒɑ̃/|n.m.|钱；银|Je n'ai pas assez d'argent.
+ville|/vil/|n.f.|城市|Paris est une grande ville.
+pays|/pe.i/|n.m.|国家|Ce pays est magnifique.
+enfant|/ɑ̃.fɑ̃/|n.|孩子|Les enfants jouent dehors.
+femme|/fam/|n.f.|女人；妻子|Cette femme est médecin.
+homme|/ɔm/|n.m.|男人；人类|Un homme attend dehors.
+être|/ɛtʁ/|v.|是|Je suis étudiant.
+avoir|/a.vwaʁ/|v.|有|J'ai deux frères.
+faire|/fɛʁ/|v.|做|Qu'est-ce que tu fais ?
+aller|/a.le/|v.|去|Je vais au marché.
+venir|/və.niʁ/|v.|来|Elle vient demain.
+voir|/vwaʁ/|v.|看见|Je vois la mer d'ici.
+parler|/paʁ.le/|v.|说话|Je parle un peu français.
+écouter|/e.ku.te/|v.|听|J'écoute de la musique.
+lire|/liʁ/|v.|读|Il lit le journal.
+écrire|/e.kʁiʁ/|v.|写|Elle écrit une lettre.
+manger|/mɑ̃.ʒe/|v.|吃|Nous mangeons à midi.
+boire|/bwaʁ/|v.|喝|Je bois du café.
+dormir|/dɔʁ.miʁ/|v.|睡觉|Je dors huit heures.
+travailler|/tʁa.va.je/|v.|工作|Il travaille le samedi.
+étudier|/e.ty.dje/|v.|学习|J'étudie le chinois.
+apprendre|/a.pʁɑ̃dʁ/|v.|学会|J'apprends le français.
+comprendre|/kɔ̃.pʁɑ̃dʁ/|v.|理解|Je ne comprends pas.
+savoir|/sa.vwaʁ/|v.|知道|Je sais où il habite.
+vouloir|/vu.lwaʁ/|v.|想要|Je veux un café.
+pouvoir|/pu.vwaʁ/|v.|能够|Tu peux m'aider ?
+devoir|/də.vwaʁ/|v.|应该|Je dois partir.
+acheter|/aʃ.te/|v.|买|J'achète du pain.
+donner|/dɔ.ne/|v.|给|Donne-moi ton stylo.
+prendre|/pʁɑ̃dʁ/|v.|拿；乘坐|Je prends le bus.
+aimer|/e.me/|v.|喜欢；爱|J'aime beaucoup ce film.
+attendre|/a.tɑ̃dʁ/|v.|等待|Attends-moi ici.
+grand|/ɡʁɑ̃/|adj.|大的|C'est une grande maison.
+petit|/pə.ti/|adj.|小的|Un petit problème.
+bon|/bɔ̃/|adj.|好的|C'est un bon restaurant.
+mauvais|/mɔ.vɛ/|adj.|坏的|Il fait mauvais temps.
+beau|/bo/|adj.|美的|Quel beau paysage !
+nouveau|/nu.vo/|adj.|新的|J'ai un nouveau téléphone.
+difficile|/di.fi.sil/|adj.|困难的|L'examen était difficile.
+facile|/fa.sil/|adj.|容易的|C'est facile à faire.
+content|/kɔ̃.tɑ̃/|adj.|高兴的|Je suis content de te voir.
+fatigué|/fa.ti.ɡe/|adj.|疲倦的|Je suis très fatigué.
+toujours|/tu.ʒuʁ/|adv.|总是|Il arrive toujours en retard.
+souvent|/su.vɑ̃/|adv.|经常|Je vais souvent au cinéma.
+maintenant|/mɛ̃t.nɑ̃/|adv.|现在|Je pars maintenant.
+beaucoup|/bo.ku/|adv.|很多|Merci beaucoup.
+aujourd'hui|/o.ʒuʁ.dɥi/|adv.|今天|Aujourd'hui il pleut.
+demain|/də.mɛ̃/|adv.|明天|À demain !`,
+  offline_es_basic: `hola|/ˈola/|interj.|你好|¡Hola! ¿Cómo estás?
+gracias|/ˈɡɾa.sjas/|interj.|谢谢|Muchas gracias por todo.
+amigo|/aˈmi.ɣo/|n.m.|朋友|Él es mi mejor amigo.
+familia|/faˈmi.lja/|n.f.|家庭|Mi familia vive en Madrid.
+casa|/ˈka.sa/|n.f.|房子；家|Voy a casa ahora.
+escuela|/esˈkwe.la/|n.f.|学校|Los niños van a la escuela.
+libro|/ˈli.βɾo/|n.m.|书|Estoy leyendo un libro.
+agua|/ˈa.ɣwa/|n.f.|水|¿Me das un vaso de agua?
+tiempo|/ˈtjem.po/|n.m.|时间；天气|No tengo tiempo hoy.
+día|/ˈdi.a/|n.m.|天|Buenos días.
+año|/ˈa.ɲo/|n.m.|年|El año pasado viajé a Perú.
+trabajo|/tɾaˈβa.xo/|n.m.|工作|Mi trabajo es interesante.
+dinero|/diˈne.ɾo/|n.m.|钱|No tengo dinero suficiente.
+ciudad|/sjuˈðað/|n.f.|城市|Barcelona es una ciudad hermosa.
+país|/paˈis/|n.m.|国家|España es un país europeo.
+niño|/ˈni.ɲo/|n.m.|孩子|El niño juega en el parque.
+mujer|/muˈxeɾ/|n.f.|女人；妻子|Esa mujer es profesora.
+hombre|/ˈom.bɾe/|n.m.|男人|Un hombre pregunta por ti.
+ser|/seɾ/|v.|是|Soy estudiante.
+estar|/esˈtaɾ/|v.|在；处于|Estoy en casa.
+tener|/teˈneɾ/|v.|有|Tengo dos hermanos.
+hacer|/aˈseɾ/|v.|做|¿Qué haces ahora?
+ir|/iɾ/|v.|去|Voy al mercado.
+venir|/beˈniɾ/|v.|来|Ella viene mañana.
+ver|/beɾ/|v.|看见|Veo el mar desde aquí.
+hablar|/aˈβlaɾ/|v.|说话|Hablo un poco de español.
+escuchar|/es.kuˈtʃaɾ/|v.|听|Escucho música todos los días.
+leer|/leˈeɾ/|v.|读|Leo el periódico.
+escribir|/es.kɾiˈβiɾ/|v.|写|Escribo una carta.
+comer|/koˈmeɾ/|v.|吃|Comemos a las dos.
+beber|/beˈβeɾ/|v.|喝|Bebo café por la mañana.
+dormir|/doɾˈmiɾ/|v.|睡觉|Duermo ocho horas.
+trabajar|/tɾa.βaˈxaɾ/|v.|工作|Trabajo los sábados.
+estudiar|/es.tuˈðjaɾ/|v.|学习|Estudio chino.
+aprender|/a.pɾenˈdeɾ/|v.|学会|Quiero aprender español.
+entender|/en.tenˈdeɾ/|v.|理解|No entiendo la pregunta.
+saber|/saˈβeɾ/|v.|知道|Sé dónde vive.
+querer|/keˈɾeɾ/|v.|想要；爱|Quiero un café.
+poder|/poˈðeɾ/|v.|能够|¿Puedes ayudarme?
+comprar|/komˈpɾaɾ/|v.|买|Compro pan cada día.
+dar|/daɾ/|v.|给|Dame tu teléfono.
+esperar|/es.peˈɾaɾ/|v.|等待；希望|Espérame aquí.
+grande|/ˈɡɾan.de/|adj.|大的|Es una casa grande.
+pequeño|/peˈke.ɲo/|adj.|小的|Un problema pequeño.
+bueno|/ˈbwe.no/|adj.|好的|Es un buen restaurante.
+malo|/ˈma.lo/|adj.|坏的|Hace mal tiempo.
+bonito|/boˈni.to/|adj.|漂亮的|¡Qué paisaje tan bonito!
+nuevo|/ˈnwe.βo/|adj.|新的|Tengo un móvil nuevo.
+difícil|/diˈfi.sil/|adj.|困难的|El examen fue difícil.
+fácil|/ˈfa.sil/|adj.|容易的|Es fácil de hacer.
+feliz|/feˈlis/|adj.|快乐的|Estoy muy feliz hoy.
+cansado|/kanˈsa.ðo/|adj.|疲倦的|Estoy muy cansado.
+siempre|/ˈsjem.pɾe/|adv.|总是|Siempre llega tarde.
+nunca|/ˈnun.ka/|adv.|从不|Nunca he estado allí.
+ahora|/aˈo.ɾa/|adv.|现在|Me voy ahora.
+mucho|/ˈmu.tʃo/|adv./adj.|很多|Muchas gracias.
+hoy|/oi̯/|adv.|今天|Hoy llueve.
+mañana|/maˈɲa.na/|adv./n.f.|明天；早晨|Hasta mañana.
+también|/tamˈbjen/|adv.|也|Yo también voy.
+pero|/ˈpe.ɾo/|conj.|但是|Es caro, pero bueno.`,
+  offline_de_basic: `hallo|/ˈhalo/|Interj.|你好|Hallo, wie geht es dir?
+danke|/ˈdaŋkə/|Interj.|谢谢|Danke für deine Hilfe.
+Freund|/frɔɪnt/|n.m.|朋友|Er ist mein bester Freund.
+Familie|/faˈmiːli̯ə/|n.f.|家庭|Meine Familie wohnt in Berlin.
+Haus|/haʊs/|n.n.|房子|Wir kaufen ein Haus.
+Schule|/ˈʃuːlə/|n.f.|学校|Die Kinder gehen zur Schule.
+Buch|/buːx/|n.n.|书|Ich lese ein Buch.
+Wasser|/ˈvasɐ/|n.n.|水|Ich trinke viel Wasser.
+Zeit|/tsaɪt/|n.f.|时间|Ich habe keine Zeit.
+Tag|/taːk/|n.m.|天|Guten Tag!
+Jahr|/jaːɐ̯/|n.n.|年|Letztes Jahr war ich in Wien.
+Arbeit|/ˈaʁbaɪt/|n.f.|工作|Die Arbeit macht Spaß.
+Geld|/ɡɛlt/|n.n.|钱|Ich habe kein Geld dabei.
+Stadt|/ʃtat/|n.f.|城市|München ist eine schöne Stadt.
+Land|/lant/|n.n.|国家；乡村|Deutschland ist ein großes Land.
+Kind|/kɪnt/|n.n.|孩子|Das Kind spielt im Garten.
+Frau|/fraʊ/|n.f.|女人；妻子|Die Frau ist Ärztin.
+Mann|/man/|n.m.|男人|Ein Mann wartet draußen.
+sein|/zaɪn/|v.|是|Ich bin Student.
+haben|/ˈhaːbn̩/|v.|有|Ich habe zwei Brüder.
+machen|/ˈmaxn̩/|v.|做|Was machst du gerade?
+gehen|/ˈɡeːən/|v.|走；去|Ich gehe zum Markt.
+kommen|/ˈkɔmən/|v.|来|Sie kommt morgen.
+sehen|/ˈzeːən/|v.|看见|Ich sehe das Meer.
+sprechen|/ˈʃprɛçn̩/|v.|说|Ich spreche etwas Deutsch.
+hören|/ˈhøːʁən/|v.|听|Ich höre gern Musik.
+lesen|/ˈleːzn̩/|v.|读|Er liest die Zeitung.
+schreiben|/ˈʃraɪbn̩/|v.|写|Sie schreibt einen Brief.
+essen|/ˈɛsn̩/|v.|吃|Wir essen um zwölf.
+trinken|/ˈtrɪŋkn̩/|v.|喝|Ich trinke Kaffee.
+schlafen|/ˈʃlaːfn̩/|v.|睡觉|Ich schlafe acht Stunden.
+arbeiten|/ˈaʁbaɪtn̩/|v.|工作|Er arbeitet am Samstag.
+lernen|/ˈlɛʁnən/|v.|学习|Ich lerne Deutsch.
+verstehen|/fɛɐ̯ˈʃteːən/|v.|理解|Ich verstehe das nicht.
+wissen|/ˈvɪsn̩/|v.|知道|Ich weiß es nicht.
+wollen|/ˈvɔlən/|v.|想要|Ich will einen Kaffee.
+können|/ˈkœnən/|v.|能够|Kannst du mir helfen?
+müssen|/ˈmʏsn̩/|v.|必须|Ich muss jetzt gehen.
+kaufen|/ˈkaʊfn̩/|v.|买|Ich kaufe Brot.
+geben|/ˈɡeːbn̩/|v.|给|Gib mir bitte den Stift.
+nehmen|/ˈneːmən/|v.|拿；乘坐|Ich nehme den Bus.
+warten|/ˈvaʁtn̩/|v.|等待|Warte bitte hier.
+groß|/ɡroːs/|adj.|大的|Das ist ein großes Haus.
+klein|/klaɪn/|adj.|小的|Ein kleines Problem.
+gut|/ɡuːt/|adj.|好的|Das Essen ist gut.
+schlecht|/ʃlɛçt/|adj.|坏的|Das Wetter ist schlecht.
+schön|/ʃøːn/|adj.|美的|Was für ein schöner Tag!
+neu|/nɔɪ/|adj.|新的|Ich habe ein neues Handy.
+schwer|/ʃveːɐ̯/|adj.|难的；重的|Die Prüfung war schwer.
+einfach|/ˈaɪnfax/|adj.|简单的|Das ist ganz einfach.
+glücklich|/ˈɡlʏklɪç/|adj.|幸福的|Ich bin sehr glücklich.
+müde|/ˈmyːdə/|adj.|疲倦的|Ich bin sehr müde.
+immer|/ˈɪmɐ/|adv.|总是|Er kommt immer zu spät.
+oft|/ɔft/|adv.|经常|Ich gehe oft ins Kino.
+jetzt|/jɛtst/|adv.|现在|Ich gehe jetzt.
+sehr|/zeːɐ̯/|adv.|非常|Das ist sehr gut.
+heute|/ˈhɔɪtə/|adv.|今天|Heute regnet es.
+morgen|/ˈmɔʁɡn̩/|adv.|明天|Bis morgen!
+auch|/aʊx/|adv.|也|Ich komme auch mit.
+aber|/ˈaːbɐ/|Konj.|但是|Es ist teuer, aber gut.`
+};
+
+function unpackWords(raw) {
+  return (raw || '').trim().split('\n').map(line => {
+    const parts = line.split('|');
+    return {
+      word: (parts[0] || '').trim(),
+      phonetic: (parts[1] || '').trim(),
+      pos: (parts[2] || '').trim(),
+      translation: (parts[3] || '').trim(),
+      example: (parts[4] || '').trim()
+    };
+  }).filter(w => w.word && w.translation);
+}
+
 const BUILTIN_WORDBOOKS_META = [
-  {
-    id: 'builtin_kaoyan',
-    name: '考研英语',
-    description: '考研核心词汇',
-    url: 'https://raw.githubusercontent.com/yukiss050815-cell/Rainyword/main/kaoyan.json'
-  }
+  // —— 离线内置（开箱即用） ——
+  { id: 'offline_en_core',  name: '英语 · 高频核心词',  description: '开源常用词表 · 离线内置', lang: 'en', offline: true },
+  { id: 'offline_ja_n5',    name: '日语 · N5 入门',     description: '开源基础词表 · 离线内置', lang: 'ja', offline: true },
+  { id: 'offline_ko_basic', name: '韩语 · 入门常用',    description: '开源基础词表 · 离线内置', lang: 'ko', offline: true },
+  { id: 'offline_fr_basic', name: '法语 · 入门常用',    description: '开源基础词表 · 离线内置', lang: 'fr', offline: true },
+  { id: 'offline_es_basic', name: '西班牙语 · 入门常用', description: '开源基础词表 · 离线内置', lang: 'es', offline: true },
+  { id: 'offline_de_basic', name: '德语 · 入门常用',    description: '开源基础词表 · 离线内置', lang: 'de', offline: true },
+  // —— 在线开源词库（kajweb/dict，首次使用需联网，之后本地缓存） ——
+  { id: 'oss_cet4',   name: '英语 · 四级 CET-4', description: '开源词库 kajweb/dict', lang: 'en',
+    urls: ['https://cdn.jsdelivr.net/gh/kajweb/dict@master/CET4_T.json',
+           'https://raw.githubusercontent.com/kajweb/dict/master/CET4_T.json'] },
+  { id: 'oss_cet6',   name: '英语 · 六级 CET-6', description: '开源词库 kajweb/dict', lang: 'en',
+    urls: ['https://cdn.jsdelivr.net/gh/kajweb/dict@master/CET6_T.json',
+           'https://raw.githubusercontent.com/kajweb/dict/master/CET6_T.json'] },
+  { id: 'oss_kaoyan', name: '英语 · 考研核心',   description: '开源词库 kajweb/dict', lang: 'en',
+    urls: ['https://cdn.jsdelivr.net/gh/kajweb/dict@master/KaoYan_3_T.json',
+           'https://raw.githubusercontent.com/kajweb/dict/master/KaoYan_3_T.json'] },
+  { id: 'oss_ielts',  name: '英语 · 雅思 IELTS', description: '开源词库 kajweb/dict', lang: 'en',
+    urls: ['https://cdn.jsdelivr.net/gh/kajweb/dict@master/IELTS_3_T.json',
+           'https://raw.githubusercontent.com/kajweb/dict/master/IELTS_3_T.json'] },
+  { id: 'oss_toefl',  name: '英语 · 托福 TOEFL', description: '开源词库 kajweb/dict', lang: 'en',
+    urls: ['https://cdn.jsdelivr.net/gh/kajweb/dict@master/TOEFL_3_T.json',
+           'https://raw.githubusercontent.com/kajweb/dict/master/TOEFL_3_T.json'] },
+  { id: 'oss_gaokao', name: '英语 · 高考词汇',   description: '开源词库 kajweb/dict', lang: 'en',
+    urls: ['https://cdn.jsdelivr.net/gh/kajweb/dict@master/GaoZhong_3_T.json',
+           'https://raw.githubusercontent.com/kajweb/dict/master/GaoZhong_3_T.json'] },
+  // —— 兼容旧版本已选中的词书 ——
+  { id: 'builtin_kaoyan', name: '考研英语（旧）', description: '兼容旧数据', lang: 'en', legacy: true,
+    urls: ['https://raw.githubusercontent.com/yukiss050815-cell/Rainyword/main/kaoyan.json'] }
 ];
 
 const WORDBOOK_CACHE = {};
+const WORDBOOK_STORE_KEY = 'wordbookCache_';   // 远程词库本地缓存
+
+// ---------- 通用格式适配：兼容多种开源词库 JSON ----------
+function adaptWordItem(item) {
+  if (!item || typeof item !== 'object') return null;
+
+  // kajweb/dict 格式：{ headWord, content: { word: { content: {...} } } }
+  if (item.headWord && item.content) {
+    const c = (item.content.word && item.content.word.content) || {};
+    const trans = Array.isArray(c.trans) ? c.trans : [];
+    const translation = trans.map(t => ((t.pos ? t.pos + '. ' : '') + (t.tranCn || t.tranOther || ''))).join('；');
+    const sent = c.sentence && Array.isArray(c.sentence.sentences) ? c.sentence.sentences[0] : null;
+    return {
+      word: item.headWord,
+      phonetic: c.usphone ? '/' + c.usphone + '/' : (c.ukphone ? '/' + c.ukphone + '/' : ''),
+      pos: trans[0] ? (trans[0].pos || '') : '',
+      translation: translation || '',
+      example: sent ? (sent.sContent || '') : ''
+    };
+  }
+
+  // 通用格式：{word, translation/trans/definition, phonetic, pos, example}
+  const word = item.word || item.headWord || item.name || item.spelling || item.en || item.term;
+  if (!word) return null;
+  let translation = item.translation || item.trans || item.cn || item.zh || item.meaning ||
+                    item.definition || item.explain || item.desc || '';
+  if (Array.isArray(translation)) {
+    translation = translation.map(t => (typeof t === 'string' ? t : (t.tranCn || t.cn || t.text || ''))).join('；');
+  }
+  if (typeof translation !== 'string') translation = String(translation || '');
+  return {
+    word: String(word),
+    phonetic: item.phonetic || item.phone || item.usphone || item.ukphone || item.pron || '',
+    pos: item.pos || item.type || '',
+    translation: translation.trim(),
+    example: item.example || item.sentence || item.sent || ''
+  };
+}
+
+function adaptWordbookPayload(raw) {
+  let arr = null;
+  if (Array.isArray(raw)) arr = raw;
+  else if (raw && Array.isArray(raw.words)) arr = raw.words;
+  else if (raw && Array.isArray(raw.data)) arr = raw.data;
+  else if (raw && Array.isArray(raw.list)) arr = raw.list;
+  else if (raw && typeof raw === 'object') {
+    // { "hello": "你好", ... } 形式
+    const keys = Object.keys(raw);
+    if (keys.length && typeof raw[keys[0]] === 'string') {
+      arr = keys.map(k => ({ word: k, translation: raw[k] }));
+    }
+  }
+  if (!arr) return [];
+  return arr.map(adaptWordItem).filter(w => w && w.word && w.translation);
+}
+
+// 解析 NDJSON（每行一个 JSON 对象，部分开源词库用这种格式）
+function parseWordbookText(text) {
+  const trimmed = text.trim();
+  try { return JSON.parse(trimmed); } catch (e) {}
+  const rows = [];
+  trimmed.split('\n').forEach(line => {
+    const l = line.trim();
+    if (!l) return;
+    try { rows.push(JSON.parse(l)); } catch (e) {}
+  });
+  return rows.length ? rows : null;
+}
 
 async function fetchWordbook(meta) {
+  if (meta.offline) { getWordbookData(meta.id); return WORDBOOK_CACHE[meta.id]; }
   const metaEl = document.getElementById('wbmeta-' + meta.id);
-  if (metaEl) metaEl.textContent = meta.description + ' · 加载中...';
+  const setMeta = txt => { if (metaEl) metaEl.textContent = meta.description + ' · ' + txt; };
+
+  // 先读本地缓存，避免每次都联网
   try {
-    const res = await fetch(meta.url);
-    if (!res.ok) throw new Error('网络错误');
-    const data = await res.json();
-    data.words = data.words.map((w, i) => ({
-      ...w,
-      id: w.id || (meta.id + '_' + i)
-    }));
-    WORDBOOK_CACHE[meta.id] = data;
-    if (metaEl) metaEl.textContent = meta.description + ' · ' + data.words.length + ' 词';
-  } catch(e) {
-    if (metaEl) metaEl.textContent = meta.description + ' · 加载失败，请检查网络';
+    const cached = localStorage.getItem(WORDBOOK_STORE_KEY + meta.id);
+    if (cached) {
+      const data = JSON.parse(cached);
+      if (data && Array.isArray(data.words) && data.words.length) {
+        WORDBOOK_CACHE[meta.id] = normalizeWordbook(data, meta.id);
+        setMeta(data.words.length + ' 词');
+        return WORDBOOK_CACHE[meta.id];
+      }
+    }
+  } catch (e) {}
+
+  setMeta('加载中...');
+  const urls = meta.urls || (meta.url ? [meta.url] : []);
+  for (const url of urls) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const text = await res.text();
+      const raw = parseWordbookText(text);
+      const words = adaptWordbookPayload(raw);
+      if (!words.length) throw new Error('空词库');
+      const data = { id: meta.id, name: meta.name, lang: meta.lang || 'en', words };
+      WORDBOOK_CACHE[meta.id] = normalizeWordbook(data, meta.id);
+      try {
+        localStorage.setItem(WORDBOOK_STORE_KEY + meta.id, JSON.stringify({ id: meta.id, name: meta.name, lang: data.lang, words }));
+      } catch (e) { /* 超出配额则只留内存缓存 */ }
+      setMeta(words.length + ' 词');
+      return WORDBOOK_CACHE[meta.id];
+    } catch (e) { /* 换下一个镜像 */ }
   }
+  setMeta('加载失败，请检查网络后重试');
+  return null;
+}
+
+// ---------- 词条 ID 归一化：按词书命名空间，避免跨词书进度串号 ----------
+function normalizeWordbook(wb, wbId) {
+  if (!wb) return null;
+  if (wb.__normalized) return wb;
+  const progress = DB.get('wordProgress') || {};
+  let migrated = false;
+  wb.id = wb.id || wbId;
+  wb.lang = wb.lang || getWordbookMetaLang(wbId) || 'en';
+  wb.words = (wb.words || []).map((w, i) => {
+    const rawId = (w.id !== undefined && w.id !== null && String(w.id) !== '') ? String(w.id) : String(i);
+    const newId = rawId.indexOf(wbId + '#') === 0 ? rawId : (wbId + '#' + rawId);
+    if (!progress[newId]) {
+      // 迁移历史进度：旧版直接用原始 id，或 wbId_索引
+      const legacy = [rawId, wbId + '_' + i];
+      for (const k of legacy) {
+        if (k !== newId && progress[k]) { progress[newId] = progress[k]; migrated = true; break; }
+      }
+    }
+    return Object.assign({}, w, { id: newId, rawId: rawId, wbId: wbId });
+  });
+  if (migrated) DB.set('wordProgress', progress);
+  Object.defineProperty(wb, '__normalized', { value: true, enumerable: false });
+  return wb;
+}
+
+function buildOfflineWordbook(meta) {
+  return {
+    id: meta.id,
+    name: meta.name,
+    lang: meta.lang || 'en',
+    words: unpackWords(OFFLINE_WORD_DATA[meta.id] || '')
+  };
 }
 
 function getWordbookData(id) {
+  if (!id) return null;
   if (WORDBOOK_CACHE[id]) return WORDBOOK_CACHE[id];
-  const customWordbooks = DB.get('wordbooks') || [];
-  return customWordbooks.find(w => w.id === id) || null;
+
+  const meta = BUILTIN_WORDBOOKS_META.find(m => m.id === id);
+  if (meta && meta.offline) {
+    WORDBOOK_CACHE[id] = normalizeWordbook(buildOfflineWordbook(meta), id);
+    return WORDBOOK_CACHE[id];
+  }
+  if (meta) {
+    // 远程词库：尝试本地缓存（同步）
+    try {
+      const cached = localStorage.getItem(WORDBOOK_STORE_KEY + id);
+      if (cached) {
+        const data = JSON.parse(cached);
+        if (data && Array.isArray(data.words) && data.words.length) {
+          WORDBOOK_CACHE[id] = normalizeWordbook(data, id);
+          return WORDBOOK_CACHE[id];
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  const custom = (DB.get('wordbooks') || []).find(w => w.id === id);
+  if (!custom) return null;
+  WORDBOOK_CACHE[id] = normalizeWordbook(custom, id);
+  return WORDBOOK_CACHE[id];
+}
+
+function invalidateWordbookCache(id) {
+  if (id) delete WORDBOOK_CACHE[id];
+  else Object.keys(WORDBOOK_CACHE).forEach(k => delete WORDBOOK_CACHE[k]);
 }
 
 function renderWordbookManager() {
@@ -4576,15 +5322,20 @@ function renderWordbookManager() {
   const customWordbooks = DB.get('wordbooks') || [];
 
   const builtinList = document.getElementById('builtin-wordbook-list');
-  builtinList.innerHTML = BUILTIN_WORDBOOKS_META.map(wb => {
+  const visibleBuiltins = BUILTIN_WORDBOOKS_META.filter(
+    wb => !wb.legacy || settings.activeWordbookId === wb.id
+  );
+  builtinList.innerHTML = visibleBuiltins.map(wb => {
     const isActive = settings.activeWordbookId === wb.id;
-    const isLoaded = !!WORDBOOK_CACHE[wb.id];
-    const wordCount = isLoaded ? WORDBOOK_CACHE[wb.id].words.length : '...';
+    const loaded = WORDBOOK_CACHE[wb.id] || (wb.offline ? getWordbookData(wb.id) : null);
+    const metaText = loaded
+      ? wb.description + ' · ' + loaded.words.length + ' 词'
+      : wb.description + ' · 点击加载';
     return `
       <div class="wordbook-card ${isActive ? 'active-wb' : ''}" id="wbcard-${wb.id}">
         <div class="wordbook-card-info" onclick="selectWordbook('${wb.id}')">
-          <div class="wordbook-card-name">${wb.name}</div>
-          <div class="wordbook-card-meta" id="wbmeta-${wb.id}">${wb.description} · ${wordCount} 词</div>
+          <div class="wordbook-card-name">${wb.name}${wb.name.indexOf(getLangName(wb.lang)) >= 0 ? '' : `<span class="wb-lang-tag">${getLangName(wb.lang)}</span>`}</div>
+          <div class="wordbook-card-meta" id="wbmeta-${wb.id}">${metaText}</div>
         </div>
         <button class="wordbook-card-delete" style="background:#F3F4F6;color:var(--text-main);" onclick="openWordlistViewer('${wb.id}')">查看</button>
         <div class="wordbook-card-check" onclick="selectWordbook('${wb.id}')">
@@ -4601,7 +5352,7 @@ function renderWordbookManager() {
     customList.innerHTML = customWordbooks.map(wb => `
       <div class="wordbook-card ${settings.activeWordbookId === wb.id ? 'active-wb' : ''}">
         <div class="wordbook-card-info" onclick="selectWordbook('${wb.id}')">
-          <div class="wordbook-card-name">${wb.name}</div>
+          <div class="wordbook-card-name">${wb.name}${wb.name.indexOf(getLangName(wb.lang || 'en')) >= 0 ? '' : `<span class="wb-lang-tag">${getLangName(wb.lang || 'en')}</span>`}</div>
           <div class="wordbook-card-meta">${wb.words ? wb.words.length : 0} 词</div>
         </div>
         <button class="wordbook-card-delete" style="background:#F3F4F6;color:var(--text-main);" onclick="openWordlistViewer('${wb.id}')">查看</button>
@@ -4613,18 +5364,18 @@ function renderWordbookManager() {
     `).join('');
   }
 
-  BUILTIN_WORDBOOKS_META.forEach(wb => {
-    if (!WORDBOOK_CACHE[wb.id]) fetchWordbook(wb);
-  });
 }
 
 async function selectWordbook(id) {
   const meta = BUILTIN_WORDBOOKS_META.find(w => w.id === id);
-  if (meta && !WORDBOOK_CACHE[id]) {
-    await fetchWordbook(meta);
+  if (meta && !getWordbookData(id)) {
+    const loaded = await fetchWordbook(meta);
+    if (!loaded) { alert('词库加载失败，请检查网络后重试'); renderWordbookManager(); return; }
   }
+  const wb = getWordbookData(id);
   const settings = DB.get('appSettings');
   settings.activeWordbookId = id;
+  if (wb && wb.lang) settings.learnLang = wb.lang;   // 学习语言跟随词书
   DB.set('appSettings', settings);
   renderWordbookManager();
   _lastWordsTabWbId = null;
@@ -4634,14 +5385,18 @@ async function selectWordbook(id) {
 function deleteWordbook(id) {
   if (!confirm('确定删除这本词书？学习进度也会一并清除。')) return;
   let wordbooks = DB.get('wordbooks') || [];
-  const wb = wordbooks.find(w => w.id === id);
+  const wb = getWordbookData(id) || wordbooks.find(w => w.id === id);
   if (wb) {
     const progress = DB.get('wordProgress') || {};
-    (wb.words || []).forEach(w => delete progress[w.id]);
+    (wb.words || []).forEach(w => {
+      delete progress[w.id];
+      if (w.rawId) delete progress[w.rawId];   // 顺带清掉历史遗留的旧 key
+    });
     DB.set('wordProgress', progress);
   }
   wordbooks = wordbooks.filter(w => w.id !== id);
   DB.set('wordbooks', wordbooks);
+  invalidateWordbookCache(id);
   const settings = DB.get('appSettings');
   if (settings.activeWordbookId === id) {
     settings.activeWordbookId = null;
@@ -4657,30 +5412,45 @@ function importWordbookFromFile(event) {
   const reader = new FileReader();
   reader.onload = function(e) {
     try {
-      const data = JSON.parse(e.target.result);
-      if (!data.name || !Array.isArray(data.words)) {
-        return alert('JSON格式不正确，请检查格式');
+      const raw = parseWordbookText(e.target.result);
+      const words = adaptWordbookPayload(raw);
+      if (!words.length) {
+        return alert('没有解析出单词，请检查 JSON 格式');
       }
-      data.words = data.words.map((w, i) => ({
-        ...w,
-        id: w.id || ('imported_' + Date.now() + '_' + i)
-      }));
+      const wbId = 'wb_' + Date.now();
+      const name = (raw && raw.name) || file.name.replace(/\.json$/i, '') || '导入词书';
+      const lang = (raw && raw.lang) || guessWordbookLang(words);
       const wordbooks = DB.get('wordbooks') || [];
       wordbooks.push({
-        id: 'wb_' + Date.now(),
-        name: data.name,
+        id: wbId,
+        name: name,
+        lang: lang,
         builtIn: false,
-        words: data.words
+        words: words.map((w, i) => Object.assign({}, w, { id: wbId + '#' + i }))
       });
       DB.set('wordbooks', wordbooks);
+      invalidateWordbookCache(wbId);
       renderWordbookManager();
-      alert(`导入成功！共 ${data.words.length} 个单词`);
+      alert('导入成功！共 ' + words.length + ' 个单词（语言：' + getLangName(lang) + '）');
     } catch {
       alert('文件解析失败，请确认是有效的JSON文件');
     }
   };
   reader.readAsText(file);
   event.target.value = '';
+}
+
+// 依据词形猜测词书语言（导入时没有 lang 字段的兜底）
+function guessWordbookLang(words) {
+  const sample = words.slice(0, 60).map(w => w.word).join('');
+  if (/[\u3040-\u30ff]/.test(sample)) return 'ja';
+  if (/[\uac00-\ud7af]/.test(sample)) return 'ko';
+  if (/[\u0400-\u04ff]/.test(sample)) return 'ru';
+  if (/[\u4e00-\u9fff]/.test(sample)) return 'zh';
+  if (/[àâçéèêëîïôûùüÿœ]/i.test(sample)) return 'fr';
+  if (/[áéíóúñ¿¡]/i.test(sample)) return 'es';
+  if (/[äöüß]/i.test(sample)) return 'de';
+  return 'en';
 }
 
 const _baseOpenSubPage = openSubPage;
@@ -4705,7 +5475,8 @@ function openWordlistViewer(wbId) {
     if (meta) {
       fetchWordbook(meta).then(() => {
         currentViewWordbook = getWordbookData(wbId);
-        if (currentViewWordbook) _doOpenWordlist();
+        if (currentViewWordbook) { renderWordbookManager(); _doOpenWordlist(); }
+        else alert('词库加载失败，请检查网络后重试');
       });
       return;
     }
@@ -4729,15 +5500,16 @@ function renderWordList() {
   const words = currentViewWordbook.words || [];
   const keyword = document.getElementById('wordlist-search').value.trim().toLowerCase();
 
+  const now = Date.now();
   const filtered = words.filter(w => {
-    if (keyword && !w.word.toLowerCase().includes(keyword) && !(w.translation || '').includes(keyword)) return false;
+    if (keyword && !w.word.toLowerCase().includes(keyword) && !(w.translation || '').toLowerCase().includes(keyword)) return false;
     if (currentWordFilter !== 'all') {
-      const status = progress[w.id]?.status || 'unseen';
-const filterStatus = currentWordFilter === 'learned' 
-  ? (status === 'learned' || status === 'reviewed')
-  : status === currentWordFilter;
-if (!filterStatus) return false;
-
+      const s = wordStatus(progress[w.id], now);
+      if (currentWordFilter === 'due') {
+        if (s.bucket === 'unseen' || s.bucket === 'learning' || !s.due) return false;
+      } else if (currentWordFilter === 'learned') {   // 兼容旧筛选值
+        if (s.bucket !== 'mastered' && s.bucket !== 'reviewing') return false;
+      } else if (s.bucket !== currentWordFilter) return false;
     }
     return true;
   });
@@ -4749,8 +5521,13 @@ if (!filterStatus) return false;
   }
 
   body.innerHTML = filtered.map(w => {
-    const status = progress[w.id]?.status || 'unseen';
-    const dotClass = (status === 'learned' || status === 'reviewed') ? 'dot-learned' : status === 'learning' ? 'dot-learning' : 'dot-unseen';
+    const s = wordStatus(progress[w.id], now);
+    const dotClass = (s.bucket === 'mastered' || s.bucket === 'reviewing') ? 'dot-learned'
+      : s.bucket === 'learning' ? 'dot-learning' : 'dot-unseen';
+    const p = progress[w.id];
+    const meta = s.bucket === 'unseen' ? ''
+      : s.bucket === 'learning' ? '学习中'
+      : (s.bucket === 'mastered' ? '已掌握' : '复习中') + (s.due ? ' · 待复习' : (p && p.nextReview ? ' · ' + formatDueIn(p.nextReview) : ''));
 
     return `
       <div class="word-row">
@@ -4758,12 +5535,37 @@ if (!filterStatus) return false;
         <div class="word-row-main">
           <div class="word-row-word">${w.word}</div>
           ${w.phonetic ? `<div class="word-row-phonetic">${w.phonetic}</div>` : ''}
-          <div class="word-row-translation">${w.pos ? `<span style="color:var(--text-muted);margin-right:4px;">${w.pos}</span>` : ''}${w.translation}</div>
+          <div class="word-row-translation">${w.pos ? `<span style="color:var(--text-muted);margin-right:4px;">${w.pos}</span>` : ''}${escapeHtml(w.translation)}</div>
         </div>
+        ${meta ? `<div style="font-size:11px;color:var(--text-muted);white-space:nowrap;margin-left:8px;">${meta}</div>` : ''}
+        <button type="button" class="speak-btn speak-btn-sm wordlist-speak" style="margin-left:6px;"
+                data-word="${escapeHtml(w.word)}" data-lang="${escapeHtml(currentViewWordbook.lang || 'en')}"
+                title="朗读" aria-label="朗读">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H3v6h3l5 4V5z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.5 8.5a5 5 0 0 1 0 7"/>
+          </svg>
+        </button>
       </div>
     `;
   }).join('');
 }
+
+function formatDueIn(ts) {
+  const days = Math.ceil((ts - Date.now()) / 86400000);
+  if (days <= 0) return '待复习';
+  if (days === 1) return '明天复习';
+  return days + ' 天后复习';
+}
+
+// 词表朗读：事件委托，避免把词形拼进内联属性
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest && e.target.closest('.wordlist-speak');
+  if (!btn) return;
+  e.stopPropagation();
+  e.preventDefault();
+  playWordAudio(btn.dataset.word, btn.dataset.lang, btn);
+});
 
 function filterWordList() { renderWordList(); }
 
@@ -4778,28 +5580,51 @@ function setWordFilter(filter, el) {
 let studyQueue = [];
 let studyIndex = 0;
 let studySessionWords = [];
-let studyWordProgress = {}; // 每个词答对次数
+let spellingState = { active: false, target: '', raw: '', missed: false, solved: false };
+let studyWordProgress = {}; // 每个词本轮答对次数
+let studyWordRequired = {}; // 每个词本轮需要答对的次数
+let studySessionWrong = {}; // 本轮是否答错过（影响 SRS 质量分）
 let studyTotalCount = 0;    // 原始总数（不变）
 let studyDoneCount = 0;     // 已完成数
 let studyCurrentList = [];   // 当前待学列表
-// SM-2 算法
-function sm2(p, correct) {
-  let { interval = 1, easeFactor = 2.5, repetitions = 0 } = p;
-  if (correct) {
-    repetitions++;
-    if (repetitions === 1) interval = 3;
-    else if (repetitions === 2) interval = 7;
-    else interval = Math.round(interval * easeFactor);
-    easeFactor = Math.max(1.3, easeFactor + 0.1);
+// SM-2 算法（带质量分、EF 上下限与遗忘惩罚）
+// quality: 0-5，>=3 视为通过。5 = 一次都没错，3 = 中途错过。
+function srsUpdate(p, quality) {
+  const prev = p || {};
+  let ef = typeof prev.easeFactor === 'number' ? prev.easeFactor : 2.5;
+  let reps = prev.repetitions || 0;
+  let interval = prev.interval || 0;
+  let lapses = prev.lapses || 0;
+
+  if (quality >= 3) {
+    reps++;
+    if (reps === 1) interval = 1;
+    else if (reps === 2) interval = 3;
+    else if (reps === 3) interval = 7;
+    else interval = Math.round(Math.max(interval, 7) * ef);
+    ef = ef + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
   } else {
-    repetitions = 0;
+    // 遗忘：重来，并缩短后续间隔
+    lapses++;
+    reps = 0;
     interval = 1;
-    easeFactor = Math.max(1.3, easeFactor - 0.2);
+    ef = ef - 0.2;
   }
-  return { interval, easeFactor, repetitions };
+  ef = Math.min(SRS_CONF.EF_MAX, Math.max(SRS_CONF.EF_MIN, ef));
+  interval = Math.min(SRS_CONF.MAX_INTERVAL, Math.max(1, interval));
+  return { interval: interval, easeFactor: Math.round(ef * 100) / 100, repetitions: reps, lapses: lapses };
+}
+// 兼容旧调用
+function sm2(p, correct) { return srsUpdate(p, correct ? 5 : 1); }
+
+// 一个词在本轮学习中需要连续答对几次才算过关
+function requiredRepsFor(bucket) {
+  if (bucket === 'mastered') return 1;
+  if (bucket === 'reviewing') return 2;
+  return 3;   // unseen / learning
 }
 
-function startStudy() {
+function startStudy(forceExtra) {
   const settings = DB.get('appSettings');
   const wb = getWordbookData(settings.activeWordbookId);
   if (!wb) return alert('请先选择词书');
@@ -4807,44 +5632,52 @@ function startStudy() {
   const progress = DB.get('wordProgress') || {};
   const now = Date.now();
   const words = wb.words || [];
+  const todayStart = new Date(new Date().toDateString()).getTime();
 
-  // 今日到期复习
-  let reviewWords = words.filter(w => {
+  const reviewWords = [], learningWords = [], unseenWords = [];
+  let startedToday = 0;
+  words.forEach(w => {
     const p = progress[w.id];
-    return p && p.status === 'reviewed' && p.nextReview && p.nextReview <= now;
+    if (p && p.firstLearnedAt && p.firstLearnedAt >= todayStart) startedToday++;
+    const s = wordStatus(p, now);
+    if (s.bucket === 'unseen') unseenWords.push(w);
+    else if (s.bucket === 'learning') learningWords.push(w);
+    else if (s.due) reviewWords.push(w);   // 复习中 + 已掌握到期的，都要复习
   });
 
-  // 上次没背完的learning词
-  let learningWords = words.filter(w => {
-    const p = progress[w.id];
-    return p && p.status === 'learning';
-  });
+  // 逾期越久越优先
+  reviewWords.sort((a, b) => ((progress[a.id] || {}).nextReview || 0) - ((progress[b.id] || {}).nextReview || 0));
 
+  // 今日新词配额 = 每日目标 - 今天已经开始学的新词，且不超过单组上限
+  const batchSize = settings.batchSize || 10;
+  const dailyGoal = settings.dailyGoal || 10;
+  let quota = Math.max(0, Math.min(batchSize, dailyGoal - startedToday));
+  if (forceExtra) quota = batchSize;
+  let newWords = unseenWords.slice(0, quota);
 
+  if (reviewWords.length === 0 && learningWords.length === 0 && newWords.length === 0) {
+    if (unseenWords.length > 0 && !forceExtra) {
+      if (confirm('今日新词目标已完成，没有到期的复习。要再加练一组新词吗？')) return startStudy(true);
+      return;
+    }
+    alert(unseenWords.length === 0 ? '这本词书已经全部学完啦！' : '今天没有需要学习或复习的单词！');
+    return;
+  }
 
-  
-// 新词
-  let newWords = words.filter(w => {
-    const p = progress[w.id];
-    return !p || p.status === 'unseen';
-  }).slice(0, settings.batchSize || 10);
-
-  // 合并去重，记录原始队列（不重复）
+  // 合并去重：到期复习 > 未背完 > 新词
   const allMap = {};
   [...reviewWords, ...learningWords, ...newWords].forEach(w => {
     if (!allMap[w.id]) allMap[w.id] = w;
   });
   studyQueue = Object.values(allMap);
 
-  if (studyQueue.length === 0) {
-    alert('今天没有需要学习或复习的单词！');
-    return;
-  }
-
-  // 初始化每个词的进度点：需要答对3次才算完成
+  // 初始化每个词本轮所需的答对次数
   studyWordProgress = {};
+  studyWordRequired = {};
+  studySessionWrong = {};
   studyQueue.forEach(w => {
-    studyWordProgress[w.id] = 0; // 已答对次数（满3过关）
+    studyWordProgress[w.id] = 0;
+    studyWordRequired[w.id] = requiredRepsFor(wordStatus(progress[w.id], now).bucket);
   });
 
   studyTotalCount = studyQueue.length;
@@ -4876,30 +5709,33 @@ function showCurrentWord() {
   document.getElementById('study-progress-text').textContent = `${studyDoneCount} / ${studyTotalCount}`;
   document.getElementById('study-progress-bar').style.width = ((studyDoneCount / studyTotalCount) * 100) + '%';
 
-  const isReview = p && p.status === 'reviewed';
+  const bucket = wordStatus(p).bucket;
+  const isReview = bucket === 'reviewing' || bucket === 'mastered';
+  const required = studyWordRequired[w.id] || 3;
 
   if (dots === 0) {
     // 第一次见：翻卡模式
-    document.getElementById('study-mode-label').textContent = isReview ? '复习' : '新学';
+    document.getElementById('study-mode-label').textContent =
+      bucket === 'mastered' ? '巩固' : (isReview ? '复习' : '新学');
     showCard(w, isReview);
   } else {
     // 已经见过：出选择题
-    document.getElementById('study-mode-label').textContent = `练习 ${renderDotsText(dots)}`;
+    document.getElementById('study-mode-label').textContent = `练习 ${renderDotsText(dots, required)}`;
     showQuiz(w, isReview);
   }
 }
 
-function renderDotsText(done) {
+function renderDotsText(done, required) {
+  const total = required || 3;
   let s = '';
-  for (let i = 0; i < 3; i++) {
-    s += i < done ? '●' : '○';
-  }
+  for (let i = 0; i < total; i++) s += i < done ? '●' : '○';
   return s;
 }
 
-function renderDotsHTML(done) {
+function renderDotsHTML(done, required) {
+  const total = required || 3;
   let s = '';
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < total; i++) {
     const color = i < done ? 'var(--text-main)' : '#D1D5DB';
     s += `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin:0 2px;"></span>`;
   }
@@ -4953,8 +5789,22 @@ function showCard(w, isReview) {
     dotsEl.style.cssText = 'position:absolute;top:12px;right:16px;display:flex;gap:4px;';
     cardEl.appendChild(dotsEl);
   }
-  dotsEl.innerHTML = renderDotsHTML(dots);
+  dotsEl.innerHTML = renderDotsHTML(dots, studyWordRequired[w.id] || 3);
 
+  const exBtn = document.getElementById('study-example-speak');
+  if (exBtn) exBtn.style.display = w.example ? 'inline-flex' : 'none';
+
+  // 自动发音（设置里开启后，出词即读）
+  if (getVoiceSettings().autoSpeak) {
+    setTimeout(() => {
+      const cur = document.getElementById('study-card');
+      if (cur && cur.dataset.word && JSON.parse(cur.dataset.word).id === w.id) {
+        playWordAudio(w.word, getWordLang(w), document.getElementById('study-speak-btn'), { silent: true });
+      }
+    }, 220);
+  }
+
+  resetSpellingArea();
   document.getElementById('study-btns-know').style.display = 'none';
   document.getElementById('study-btns-quiz').style.display = 'none';
   cardEl.style.display = 'flex';
@@ -4969,10 +5819,68 @@ function tapStudyCard() {
   document.getElementById('study-btns-know').style.display = 'flex';
 }
 
+// ============ 统一评分：翻卡与选择题共用 ============
+// 返回 true 表示该词本轮已过关
+function gradeStudyWord(w, correct) {
+  // 拼写模式下拼错或看了答案，本轮记为出过错，影响 SRS 质量分
+  if (spellingState && spellingState.raw && normalizeSpelling(spellingState.raw) === normalizeSpelling(w.word)) {
+    if (spellingState.missed) studySessionWrong[w.id] = true;
+  }
+  const progress = DB.get('wordProgress') || {};
+  const prev = progress[w.id] || {};
+  const now = Date.now();
+  const required = studyWordRequired[w.id] || 3;
+
+  const p = Object.assign({}, prev);
+  p.firstLearnedAt = prev.firstLearnedAt || now;
+  p.lastSeenAt = now;
+  p.seenCount = (prev.seenCount || 0) + 1;
+
+  if (correct) {
+    p.correctCount = (prev.correctCount || 0) + 1;
+    studyWordProgress[w.id] = (studyWordProgress[w.id] || 0) + 1;
+  } else {
+    p.wrongCount = (prev.wrongCount || 0) + 1;
+    studySessionWrong[w.id] = true;
+    // 答错降一格而不是清零，避免长词书里反复从头再来
+    studyWordProgress[w.id] = Math.max(0, (studyWordProgress[w.id] || 0) - 1);
+  }
+
+  const passed = correct && studyWordProgress[w.id] >= required;
+
+  if (passed) {
+    // 本轮全对给 5 分，中途错过给 3 分；复习时答错过则按遗忘处理
+    const wasWrong = !!studySessionWrong[w.id];
+    const quality = wasWrong ? 3 : 5;
+    const sm = srsUpdate(prev, quality);
+    Object.assign(p, sm);
+    p.status = 'review';
+    p.nextReview = now + sm.interval * 24 * 60 * 60 * 1000;
+    p.learnedAt = now;
+    p.mastered = isMasteredProgress(p);
+    progress[w.id] = p;
+    DB.set('wordProgress', progress);
+
+    if (!studySessionWords.find(x => x.id === w.id)) studySessionWords.push(w);
+    studyDoneCount++;
+    studyCurrentList.shift();
+  } else {
+    p.status = 'learning';
+    progress[w.id] = p;
+    DB.set('wordProgress', progress);
+
+    studyCurrentList.shift();
+    // 答错的词很快再出现，答对但未满次数的排到队尾
+    const pos = correct ? studyCurrentList.length : Math.min(2, studyCurrentList.length);
+    studyCurrentList.splice(pos, 0, w);
+  }
+  return passed;
+}
+
 function answerWord(know) {
   const cardEl = document.getElementById('study-card');
+  if (!cardEl.dataset.word) return;
   const w = JSON.parse(cardEl.dataset.word);
-  const progress = DB.get('wordProgress') || {};
 
   // 先让当前卡片渐出
   cardEl.classList.add('card-fading-out');
@@ -4981,103 +5889,75 @@ function answerWord(know) {
 
   // 等渐出动画结束后再处理逻辑和显示下一个
   setTimeout(() => {
-    if (know) {
-      studyWordProgress[w.id] = (studyWordProgress[w.id] || 0) + 1;
-
-      if (studyWordProgress[w.id] >= 3) {
-        const p = progress[w.id] || {};
-        const sm = sm2(p, true);
-        const isLearned = sm.interval >= 21;
-        progress[w.id] = {
-          status: isLearned ? 'learned' : 'reviewed',
-          ...sm,
-          nextReview: Date.now() + sm.interval * 24 * 60 * 60 * 1000,
-          firstLearnedAt: (progress[w.id] || {}).firstLearnedAt || Date.now(),
-          learnedAt: Date.now()
-        };
-        if (!studySessionWords.find(x => x.id === w.id)) {
-          studySessionWords.push(w);
-        }
-        studyDoneCount++;
-        studyCurrentList.shift();
-      } else {
-        progress[w.id] = {
-          ...(progress[w.id] || {}),
-          status: 'learning',
-          firstLearnedAt: (progress[w.id] || {}).firstLearnedAt || Date.now()
-        };
-        studyCurrentList.shift();
-        studyCurrentList.push(w);
-      }
-    } else {
-      studyWordProgress[w.id] = 0;
-      progress[w.id] = {
-        ...(progress[w.id] || {}),
-        status: 'learning',
-        wrongCount: ((progress[w.id] || {}).wrongCount || 0) + 1,
-        firstLearnedAt: (progress[w.id] || {}).firstLearnedAt || Date.now()
-      };
-      studyCurrentList.shift();
-      studyCurrentList.push(w);
-    }
-
-    DB.set('wordProgress', progress);
-
-    // 移除渐出类，重置透明度（此时内容还未更新，但卡片不可见）
+    gradeStudyWord(w, !!know);
     cardEl.classList.remove('card-fading-out');
-    // 立即显示下一个词（卡片已经是 opacity:1 了，内容瞬间切换，无泄题）
     showCurrentWord();
   }, 250); // 与动画时长一致
 }
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function showQuiz(w, isReview) {
   const wb = getWordbookData(DB.get('appSettings').activeWordbookId);
-  const allWords = wb.words || [];
+  const allWords = (wb && wb.words) || [];
   const quizType = Math.random() > 0.5 ? 0 : 1;
 
-  let distractors = allWords
-    .filter(x => x.id !== w.id)
-    .sort(() => Math.random() - 0.5)
-    .slice(0, 3);
-
-  let options, question;
-  if (quizType === 0) {
-    question = w.word;
-    options = [
-      { text: w.translation, correct: true },
-      ...distractors.map(d => ({ text: d.translation, correct: false }))
-    ];
-  } else {
-    question = w.translation;
-    options = [
-      { text: w.word, correct: true },
-      ...distractors.map(d => ({ text: d.word, correct: false }))
-    ];
+  // 干扰项优先同词性，且释义/拼写不能与正确答案重复
+  const samePos = allWords.filter(x => x.id !== w.id && w.pos && x.pos === w.pos);
+  const others = allWords.filter(x => x.id !== w.id);
+  const pool = (samePos.length >= 3 ? samePos : others).slice();
+  const picked = [];
+  const usedText = new Set([w.translation, w.word]);
+  for (let guard = 0; guard < 200 && picked.length < 3 && pool.length; guard++) {
+    const d = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+    const text = quizType === 0 ? d.translation : d.word;
+    if (!text || usedText.has(text)) continue;
+    usedText.add(text);
+    picked.push(d);
   }
+
+  const question = quizType === 0 ? w.word : w.translation;
+  let options = [
+    { text: quizType === 0 ? w.translation : w.word, correct: true }
+  ].concat(picked.map(d => ({ text: quizType === 0 ? d.translation : d.word, correct: false })));
   options = options.sort(() => Math.random() - 0.5);
+  currentQuizOptions = options;
+  currentQuizWord = w;
 
   const dots = studyWordProgress[w.id] || 0;
-  document.getElementById('study-mode-label').textContent = `练习 ${renderDotsText(dots)}`;
+  const required = studyWordRequired[w.id] || 3;
+  document.getElementById('study-mode-label').textContent = `练习 ${renderDotsText(dots, required)}`;
 
   // 隐藏卡片，显示选择题区域
   document.getElementById('study-card').style.display = 'none';
   document.getElementById('study-btns-know').style.display = 'none';
+  resetSpellingArea();
 
   document.getElementById('quiz-question').innerHTML = `
-    <div style="margin-bottom:4px;">${question}</div>
-    <div style="margin-top:8px;">${renderDotsHTML(dots)}</div>
+    <div style="margin-bottom:4px;">${escapeHtml(question)}</div>
+    <div style="margin-top:8px;">${renderDotsHTML(dots, required)}</div>
   `;
 
-  document.getElementById('quiz-options').innerHTML = options.map(o => `
-    <button class="quiz-option" data-correct="${o.correct}" onclick="answerQuiz(this, ${o.correct}, '${w.id}', ${isReview})">
-      ${o.text}
-    </button>
+  document.getElementById('quiz-options').innerHTML = options.map((o, i) => `
+    <button class="quiz-option" data-correct="${o.correct}" data-idx="${i}">${escapeHtml(o.text)}</button>
   `).join('');
+  document.querySelectorAll('#quiz-options .quiz-option').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const idx = parseInt(this.dataset.idx, 10);
+      answerQuiz(this, currentQuizOptions[idx].correct, currentQuizWord.id, isReview);
+    });
+  });
 
   const quizEl = document.getElementById('study-btns-quiz');
   quizEl.style.display = 'block';
   quizEl.style.opacity = '1';
   quizEl.style.transition = 'none';
 }
+let currentQuizOptions = [];
+let currentQuizWord = null;
 
 function answerQuiz(btn, correct, wordId, isReview) {
   document.querySelectorAll('.quiz-option').forEach(b => b.disabled = true);
@@ -5085,67 +5965,22 @@ function answerQuiz(btn, correct, wordId, isReview) {
 
   if (!correct) {
     document.querySelectorAll('.quiz-option').forEach(b => {
-      if (b !== btn && b.dataset.correct === 'true') {
-        b.classList.add('correct');
-      }
+      if (b !== btn && b.dataset.correct === 'true') b.classList.add('correct');
     });
   }
 
-  const progress = DB.get('wordProgress') || {};
+  // 以队首为准，避免 id 与实际当前词不一致
   const w = studyCurrentList[0];
+  if (!w || w.id !== wordId) return;
 
   // 先显示对错反馈 800ms，然后渐出，再切换下一题
   setTimeout(() => {
-    // 渐出选择题区域
     const quizWrap = document.getElementById('study-btns-quiz');
     quizWrap.style.transition = 'opacity 0.25s ease';
     quizWrap.style.opacity = '0';
 
     setTimeout(() => {
-      if (correct) {
-        studyWordProgress[wordId] = (studyWordProgress[wordId] || 0) + 1;
-
-        if (studyWordProgress[wordId] >= 3) {
-          const p = progress[wordId] || {};
-          const sm = sm2(p, true);
-          const isLearned = sm.interval >= 21;
-          progress[wordId] = {
-            ...p,
-            status: isLearned ? 'learned' : 'reviewed',
-            ...sm,
-            nextReview: Date.now() + sm.interval * 24 * 60 * 60 * 1000,
-            firstLearnedAt: p.firstLearnedAt || Date.now(),
-            learnedAt: Date.now()
-          };
-          if (!studySessionWords.find(x => x.id === wordId)) {
-            studySessionWords.push(w);
-          }
-          studyDoneCount++;
-          studyCurrentList.shift();
-        } else {
-          progress[wordId] = {
-            ...(progress[wordId] || {}),
-            status: 'learning',
-            firstLearnedAt: (progress[wordId] || {}).firstLearnedAt || Date.now()
-          };
-          studyCurrentList.shift();
-          studyCurrentList.push(w);
-        }
-      } else {
-        studyWordProgress[wordId] = 0;
-        progress[wordId] = {
-          ...(progress[wordId] || {}),
-          status: 'learning',
-          wrongCount: ((progress[wordId] || {}).wrongCount || 0) + 1,
-          firstLearnedAt: (progress[wordId] || {}).firstLearnedAt || Date.now()
-        };
-        studyCurrentList.shift();
-        studyCurrentList.push(w);
-      }
-
-      DB.set('wordProgress', progress);
-
-      // 重置透明度，然后显示下一题
+      gradeStudyWord(w, !!correct);
       quizWrap.style.transition = 'none';
       quizWrap.style.opacity = '1';
       showCurrentWord();
@@ -5153,7 +5988,13 @@ function answerQuiz(btn, correct, wordId, isReview) {
   }, 800); // 对错反馈展示时长
 }
 
+function _finishMasteredCount() {
+  const progress = DB.get('wordProgress') || {};
+  return studySessionWords.filter(w => isMasteredProgress(progress[w.id])).length;
+}
+
 function finishStudy() {
+  resetSpellingArea();
   document.getElementById('study-progress-text').textContent = '完成';
   document.getElementById('study-progress-bar').style.width = '100%';
   document.getElementById('study-mode-label').textContent = '完成';
@@ -5177,7 +6018,7 @@ function finishStudy() {
         </svg>
       </div>
       <div class="study-done-title">学习完成</div>
-      <div class="study-done-sub">本次学会 ${studySessionWords.length} 个单词</div>
+      <div class="study-done-sub">本次过关 ${studySessionWords.length} 个单词${_finishMasteredCount() ? ` · 其中 ${_finishMasteredCount()} 个已掌握` : ''}</div>
       <button class="btn" style="width:100%;padding:16px;font-size:16px;border-radius:14px;" onclick="exitStudy()">返回</button>
     </div>
   `;
@@ -5187,6 +6028,7 @@ function finishStudy() {
 }
 
 function exitStudy() {
+  resetSpellingArea();
   closeSubPage('study-page');
   initWordsTab();
 }
@@ -6035,19 +6877,19 @@ document.getElementById('toggle-study-history-label').textContent =
 // 加载持久化历史消息
 const history = loadChatHistory(currentChatChar.id);
 history.forEach(m => {
+  const stickerUrl = m.stickerUrl || (isStickerContent(m.content) ? resolveStickerByContent(m.content) : '');
+  if (stickerUrl) {
+    appendStickerMessage(m.role === 'user' ? 'sent' : 'received', stickerUrl, m.content);
+    return;
+  }
   if (m.role === 'user') {
-    if (m.stickerUrl) {
-      appendStickerMessage('sent', m.stickerUrl);
-    } else {
-      appendMessage('sent', m.content);
-    }
+    appendMessage('sent', m.content);
   } else if (m.role === 'assistant') {
-    if (m.stickerUrl) {
-      appendStickerMessage('received', m.stickerUrl);
-    } else {
-      const processed = processVocabMarkers(m.content);
-      appendMessage('received', processed.html, true);
-    }
+    const parsed = parseTranslation(m.content);
+    const processed = processVocabMarkers(parsed.text);
+    appendMessage('received', processed.html, true);
+    const trans = m.translation || parsed.translation;
+    if (trans) attachTranslationToLastMsg(trans);
   }
 });
 
@@ -6441,10 +7283,13 @@ function onStickerThumbClick(catIdx, itemIdx) {
   sendUserSticker(url);
 }
 
-function appendStickerMessage(type, url) {
+function appendStickerMessage(type, url, content) {
   var messagesEl = document.getElementById('chat-messages');
   var row = document.createElement('div');
   row.className = 'msg-row ' + type;
+  row.dataset.stickerUrl = url || '';
+  if (content) row.dataset.stickerContent = content;
+  row.dataset.msgIdx = messagesEl.querySelectorAll('.msg-row').length;
   var time = formatTime();
   var bubbleWrap = document.createElement('div');
   bubbleWrap.style.cssText = 'display:flex;flex-direction:column;max-width:72%;';
@@ -6459,15 +7304,43 @@ function appendStickerMessage(type, url) {
 }
 
 
-function sendAISticker() {
+// wanted: AI 想发的表情描述（[STICKER:描述]），优先按描述匹配
+function sendAISticker(wanted) {
   const cats = DB.get('stickerCategories') || [];
   const allItems = cats.flatMap(c => c.items || []);
   if (allItems.length === 0) return;
-  const item = allItems[Math.floor(Math.random() * allItems.length)];
-  // ★ 兼容字符串和对象两种格式
-  const url = typeof item === 'string' ? item : (item.url || '');
-  if (!url) return;
-  appendStickerMessage('received', url);
+
+  const norm = it => ({
+    url: typeof it === 'string' ? it : (it.url || ''),
+    desc: typeof it === 'object' ? (it.desc || '') : ''
+  });
+  let candidates = allItems.map(norm).filter(x => x.url);
+  if (!candidates.length) return;
+
+  if (wanted) {
+    const key = String(wanted).trim().toLowerCase();
+    const matched = candidates.filter(x => x.desc && (
+      x.desc.toLowerCase().indexOf(key) >= 0 || key.indexOf(x.desc.toLowerCase()) >= 0
+    ));
+    if (matched.length) candidates = matched;
+  }
+
+  const item = candidates[Math.floor(Math.random() * candidates.length)];
+  const content = item.desc
+    ? '[' + ((currentChatChar && currentChatChar.name) || '对方') + '发送了一个表情包：' + item.desc + ']'
+    : '[' + ((currentChatChar && currentChatChar.name) || '对方') + '发送了一个表情包]';
+
+  appendStickerMessage('received', item.url, content);
+
+  // ★ 表情包也要进入上下文和历史，否则聊天记录里只剩描述词甚至完全消失
+  const msg = { role: 'assistant', content: content, ts: Date.now(), stickerUrl: item.url };
+  chatMessages.push(msg);
+  if (currentChatChar) {
+    saveMsgToHistory(currentChatChar.id, Object.assign({}, msg, { sessionType: chatSessionType }));
+    if (typeof appendToMemoryBuffer === 'function') {
+      appendToMemoryBuffer(currentChatChar.id, { role: 'assistant', content: content, ts: msg.ts });
+    }
+  }
 }
 
 // ===== 单词学完弹窗 =====
@@ -6694,6 +7567,10 @@ function openStoryPage() {
   document.getElementById('story-loading').style.display = 'flex';
   document.getElementById('story-content-area').style.display = 'none';
   document.getElementById('story-page-title').textContent = '番外故事';
+  const srcBtn = document.getElementById('story-lang-btn-src');
+  const trBtn = document.getElementById('story-lang-btn-tr');
+  if (srcBtn) srcBtn.textContent = getLangName(getLearnLang());
+  if (trBtn) trBtn.textContent = getLangName(getNativeLang());
 
   openSubPage('story-page');
   generateStory();
@@ -6715,17 +7592,20 @@ async function generateStory() {
 
     const presetText = getActiveStoryPresetText();
 
-  const systemPrompt = `你是一个创意写作助手，擅长写融入词汇学习的英文小故事。
+  const learnLangName = getLangName(getLearnLang());
+  const nativeLangName = getLangName(getNativeLang());
+
+  const systemPrompt = `你是一个创意写作助手，擅长写融入词汇学习的${learnLangName}小故事。
 ${worldbook}${userCtx}${presetText}
 
 角色设定：${char.name}
 ${char.systemPrompt || ''}
 
 写作规则：
-1. 用英文写一篇 ${lenDesc} 的小故事，故事主角是角色和用户
+1. 用${learnLangName}写一篇 ${lenDesc} 的小故事，故事主角是角色和用户
 2. 自然融入以下词汇，每个词汇用【】标记：${wordList}
 3. 故事风格符合角色人设，有情节有对话，生动有趣
-${presetText ? '4. 严格遵守用户写作预设中的要求\n' : ''}${presetText ? '5' : '4'}. 输出格式：先输出完整英文故事，然后输出分隔符 ===TRANSLATION===，再输出对应的中文翻译
+${presetText ? '4. 严格遵守用户写作预设中的要求\n' : ''}${presetText ? '5' : '4'}. 输出格式：先输出完整的${learnLangName}故事，然后输出分隔符 ===TRANSLATION===，再输出对应的${nativeLangName}翻译
 ${presetText ? '6' : '5'}. 不要输出任何其他内容`;
 
   try {
@@ -7535,11 +8415,37 @@ function openRecordViewer(id) {
         ${msgs.map(m => {
           const isSent = m.role === 'user';
           const avatarHtml = isSent ? userAvatarHtml : charAvatarHtml;
-          const processed = isSent ? m.content : processVocabMarkers(m.content).html;
+
+          // ★ 表情包消息渲染成图片，而不是只剩下描述词
+          m = Object.assign({}, m);
+          if (!m.stickerUrl && isStickerContent(m.content)) m.stickerUrl = resolveStickerByContent(m.content);
+          if (m.stickerUrl) {
+            return `<div class="msg-row ${isSent ? 'sent' : 'received'}" style="margin-bottom:4px;">
+              <div class="msg-avatar">${avatarHtml}</div>
+              <div style="display:flex;flex-direction:column;max-width:72%;">
+                <div class="msg-sticker" style="padding:4px;">
+                  <img src="${escapeHtml(m.stickerUrl)}" style="max-width:150px;border-radius:10px;display:block;"
+                       onerror="this.parentElement.innerHTML='<span style=&quot;color:#ccc;font-size:12px;&quot;>${escapeHtml(m.content || '表情包')}</span>'">
+                </div>
+                <span class="msg-time">${formatTime(m.ts)}</span>
+              </div>
+            </div>`;
+          }
+
+          const parsed = parseTranslation(m.content);
+          const processed = isSent ? escapeHtml(parsed.text) : processVocabMarkers(parsed.text).html;
+          const trans = m.translation || parsed.translation;
+          const transHtml = trans
+            ? `<div class="msg-translation">
+                 <button type="button" class="msg-trans-toggle" onclick="toggleTranslationBox(this)"><span class="arrow">▸</span><span class="label">显示翻译</span></button>
+                 <div class="msg-trans-body">${escapeHtml(trans)}</div>
+               </div>`
+            : '';
           return `<div class="msg-row ${isSent ? 'sent' : 'received'}" style="margin-bottom:4px;">
             <div class="msg-avatar">${avatarHtml}</div>
             <div style="display:flex;flex-direction:column;max-width:72%;">
               <div class="msg-bubble">${processed}</div>
+              ${transHtml}
               <span class="msg-time">${formatTime(m.ts)}</span>
             </div>
           </div>`;
@@ -7549,8 +8455,8 @@ function openRecordViewer(id) {
     content.innerHTML = `
       <div style="padding:16px;">
         <div class="story-lang-toggle">
-          <button class="story-lang-btn active" onclick="switchViewerLang('en',this,'${id}')">English</button>
-          <button class="story-lang-btn" onclick="switchViewerLang('zh',this,'${id}')">中文</button>
+          <button class="story-lang-btn active" onclick="switchViewerLang('en',this,'${id}')">原文</button>
+          <button class="story-lang-btn" onclick="switchViewerLang('zh',this,'${id}')">翻译</button>
         </div>
         <div class="story-body" id="viewer-story-body">${(r.storyEn || '').replace(/\n/g,'<br>')}</div>
       </div>`;
@@ -8554,15 +9460,16 @@ sendUserSticker = function(url) {
   }
 
   var msgContent = desc ? '[用户发送了一个表情包：' + desc + ']' : '[用户发送了一个表情包]';
+  var ts = Date.now();
 
-  chatMessages.push({ role: 'user', content: msgContent, ts: Date.now() });
+  chatMessages.push({ role: 'user', content: msgContent, ts: ts, stickerUrl: url });
   saveMsgToHistory(currentChatChar.id, {
-    role: 'user', content: msgContent, ts: Date.now(), sessionType: chatSessionType
+    role: 'user', content: msgContent, ts: ts, sessionType: chatSessionType, stickerUrl: url
   });
 
   // 追加到记忆缓冲区
   if (currentChatChar) {
-    appendToMemoryBuffer(currentChatChar.id, { role: 'user', content: msgContent, ts: Date.now() });
+    appendToMemoryBuffer(currentChatChar.id, { role: 'user', content: msgContent, ts: ts });
   }
 
   document.getElementById('chat-trigger-btn').disabled = chatIsReplying;
@@ -9021,16 +9928,31 @@ function rebuildChatMessages() {
   var newMessages = [];
   rows.forEach(function(row) {
     var isSent = row.classList.contains('sent');
+    var role = isSent ? 'user' : 'assistant';
+
+    // ★ 表情包消息没有 .msg-bubble，必须单独处理，否则重建后表情包会被整条丢掉
+    var stickerUrl = row.dataset.stickerUrl;
+    if (!stickerUrl) {
+      var img = row.querySelector('.msg-sticker img');
+      if (img) stickerUrl = img.getAttribute('src');
+    }
+    if (stickerUrl) {
+      newMessages.push({
+        role: role,
+        content: row.dataset.stickerContent || (isSent ? '[用户发送了一个表情包]' : '[对方发送了一个表情包]'),
+        ts: Date.now(),
+        stickerUrl: stickerUrl
+      });
+      return;
+    }
+
     var bubble = row.querySelector('.msg-bubble');
     if (!bubble) return;
+    var transBody = bubble.parentElement ? bubble.parentElement.querySelector('.msg-trans-body') : null;
     var content = bubble.innerText || bubble.textContent || '';
-    // 尝试从原 chatMessages 找匹配的（保留 ts 等元数据）
-    var role = isSent ? 'user' : 'assistant';
-    newMessages.push({
-      role: role,
-      content: content.trim(),
-      ts: Date.now()
-    });
+    var msg = { role: role, content: content.trim(), ts: Date.now() };
+    if (transBody) msg.translation = (transBody.innerText || transBody.textContent || '').trim();
+    newMessages.push(msg);
   });
   chatMessages = newMessages;
 }
@@ -9040,12 +9962,15 @@ function rebuildPersistentHistory() {
   if (!currentChatChar) return;
   var key = getChatHistoryKey(currentChatChar.id);
   var newHistory = chatMessages.map(function(m) {
-    return {
+    var out = {
       role: m.role,
       content: m.content,
       ts: m.ts || Date.now(),
       sessionType: m.sessionType || chatSessionType
     };
+    if (m.stickerUrl) out.stickerUrl = m.stickerUrl;
+    if (m.translation) out.translation = m.translation;
+    return out;
   });
   localStorage.setItem(key, JSON.stringify(newHistory));
 }
@@ -9526,10 +10451,11 @@ streamAIReply = async function(messages, systemPrompt) {
     removeTypingIndicator(typingId);
 
     // ===== 后端词汇检测（在完整回复上运行一次）=====
+    // 注意：先剥离 [[TR]] 译文，否则会把翻译里的词误判为已带出
     var remainingVocab = chatVocabList.filter(function(w) {
       return !chatVocabDone.find(function(d) { return d.id === w.id; });
     });
-    var detected = detectVocabInReply(fullReply, remainingVocab);
+    var detected = detectVocabInReply(stripTranslations(fullReply), remainingVocab);
     
     // 记录足迹
     if (currentChatChar) {
@@ -9550,22 +10476,46 @@ streamAIReply = async function(messages, systemPrompt) {
     for (var i = 0; i < parts.length; i++) {
       var part = parts[i];
 
-      if (part === '[STICKER]') {
-        sendAISticker();
+      var stickerMatch = part.match(/^\[STICKER(?::\s*([^\]]*))?\]$/i);
+      if (stickerMatch) {
+        sendAISticker(stickerMatch[1] || '');
       } else {
+        // 拆出正文与译文
+        var parsed = parseTranslation(part);
+        if (!parsed.text) {
+          // AI 把译文单独换段输出时，补挂到上一条消息上
+          if (parsed.translation && attachTranslationToLastMsg(parsed.translation)) {
+            var lastMsg = chatMessages[chatMessages.length - 1];
+            if (lastMsg && lastMsg.role === 'assistant' && !lastMsg.translation) {
+              lastMsg.translation = parsed.translation;
+              if (currentChatChar) {
+                var hk = getChatHistoryKey(currentChatChar.id);
+                var all = JSON.parse(localStorage.getItem(hk) || '[]');
+                if (all.length) {
+                  all[all.length - 1].translation = parsed.translation;
+                  localStorage.setItem(hk, JSON.stringify(all));
+                }
+              }
+            }
+          }
+          continue;
+        }
+
         // 用后端高亮替代AI标记
-        var highlightedHtml = highlightVocabInReply(part, chatVocabList);
+        var highlightedHtml = highlightVocabInReply(parsed.text, chatVocabList);
         appendMessage('received', highlightedHtml, true);
+        if (parsed.translation) attachTranslationToLastMsg(parsed.translation);
 
         // 清除【】标记后存入消息历史（纯文本）
-        var cleanContent = part.replace(/【([^】]+)】/g, '$1');
-        chatMessages.push({ role: 'assistant', content: cleanContent, ts: Date.now() });
-        saveMsgToHistory(currentChatChar.id, {
-          role: 'assistant', content: cleanContent, ts: Date.now(), sessionType: chatSessionType
-        });
+        var cleanContent = parsed.text.replace(/【([^】]+)】/g, '$1');
+        var ts = Date.now();
+        var msg = { role: 'assistant', content: cleanContent, ts: ts };
+        if (parsed.translation) msg.translation = parsed.translation;
+        chatMessages.push(msg);
+        saveMsgToHistory(currentChatChar.id, Object.assign({}, msg, { sessionType: chatSessionType }));
 
         if (currentChatChar) {
-          appendToMemoryBuffer(currentChatChar.id, { role: 'assistant', content: cleanContent, ts: Date.now() });
+          appendToMemoryBuffer(currentChatChar.id, { role: 'assistant', content: cleanContent, ts: ts });
         }
       }
 
@@ -9635,7 +10585,16 @@ openChatPage = function() {
   _v2_origOpenChatPage();
   document.getElementById('chat-settings-panel').classList.remove('open');
   initChatSettingsPanel();
+  updateTranslationMenuLabel();
 };
+
+function updateTranslationMenuLabel() {
+  var el = document.getElementById('toggle-translation-label');
+  if (!el) return;
+  el.textContent = isTranslationOn()
+    ? '关闭对话翻译（当前：' + getLangName(getLearnLang()) + '）'
+    : '开启对话翻译';
+}
 
 
 // ============================================================
@@ -9710,14 +10669,16 @@ sendUserSticker = function(url) {
   }
 
   var msgContent = desc ? '[用户发送了一个表情包：' + desc + ']' : '[用户发送了一个表情包]';
+  var ts = Date.now();
 
-  chatMessages.push({ role: 'user', content: msgContent, ts: Date.now() });
+  // ★ 带上 stickerUrl，聊天记录与回看里才能显示图片而不是只剩描述词
+  chatMessages.push({ role: 'user', content: msgContent, ts: ts, stickerUrl: url });
   saveMsgToHistory(currentChatChar.id, {
-    role: 'user', content: msgContent, ts: Date.now(), sessionType: chatSessionType
+    role: 'user', content: msgContent, ts: ts, sessionType: chatSessionType, stickerUrl: url
   });
 
   if (currentChatChar) {
-    appendToMemoryBuffer(currentChatChar.id, { role: 'user', content: msgContent, ts: Date.now() });
+    appendToMemoryBuffer(currentChatChar.id, { role: 'user', content: msgContent, ts: ts });
   }
 
   document.getElementById('chat-trigger-btn').disabled = chatIsReplying;
@@ -9731,6 +10692,20 @@ var _v2_origChatMoreAction = chatMoreAction;
 chatMoreAction = function(action) {
   closeChatMore();
 
+  if (action === 'toggle-translation') {
+    var st = DB.get('appSettings') || {};
+    st.translationEnabled = !st.translationEnabled;
+    DB.set('appSettings', st);
+    updateTranslationMenuLabel();
+    appendSystemMsg(st.translationEnabled
+      ? '已开启对话翻译：' + getLangName(getLearnLang()) + ' 对话 + ' + getLangName(getNativeLang()) + ' 翻译（下一条回复生效）'
+      : '已关闭对话翻译');
+    return;
+  }
+  if (action === 'toggle-all-translations') {
+    toggleAllTranslations();
+    return;
+  }
   if (action === 'chat-bg') {
     initChatBgSettings();
     document.getElementById('chat-bg-modal').classList.add('open');
@@ -9778,8 +10753,14 @@ chatMoreAction = function(action) {
     document.getElementById('chat-messages').innerHTML = '';
     var history = loadChatHistory(currentChatChar.id);
     history.forEach(function(m) {
-      if (m.role === 'user') appendMessage('sent', m.content);
-      else appendMessage('received', highlightVocabInReply(m.content, chatVocabList), true);
+      var su = m.stickerUrl || (isStickerContent(m.content) ? resolveStickerByContent(m.content) : '');
+      if (su) {
+        appendStickerMessage(m.role === 'user' ? 'sent' : 'received', su, m.content);
+      } else if (m.role === 'user') {
+        appendMessage('sent', m.content);
+      } else {
+        appendMessage('received', highlightVocabInReply(m.content, chatVocabList), true);
+      }
     });
     if (history.length > 0) appendSystemMsg('—— 以上是历史记录 ——');
     chatMessages = history;
@@ -9787,6 +10768,145 @@ chatMoreAction = function(action) {
 };
 
 console.log('[V2] Prompt重构 + 情境种子 + 后端检测 已加载');
+
+// ============================================================
+//  V3：多语言对话 + 可折叠翻译
+//  约定：AI 在每条消息末尾用 [[TR]]译文[[/TR]] 附带母语翻译，
+//        前端解析后折叠显示在气泡下方。
+// ============================================================
+const TRANS_OPEN_RE = /\[\[TR\]\]/i;
+const TRANS_RE = /\[\[TR\]\]([\s\S]*?)(?:\[\[\/TR\]\]|$)/i;
+
+function isTranslationOn() {
+  const s = DB.get('appSettings') || {};
+  return s.translationEnabled === true;
+}
+
+// 把一条消息拆成 { text, translation }
+function parseTranslation(raw) {
+  const src = String(raw == null ? '' : raw);
+  const m = src.match(TRANS_RE);
+  if (!m) return { text: src.trim(), translation: '' };
+  const text = src.slice(0, m.index).trim();
+  const translation = (m[1] || '').trim();
+  return { text: text || src.replace(TRANS_RE, '').trim(), translation: translation };
+}
+
+// 去掉全部翻译片段（用于词汇检测、记忆摘要等，避免把译文当成正文）
+function stripTranslations(raw) {
+  return String(raw == null ? '' : raw).replace(/\[\[TR\]\][\s\S]*?(?:\[\[\/TR\]\]|$)/gi, '').trim();
+}
+
+function toggleTranslationBox(btn) {
+  const box = btn.parentElement;
+  const body = box.querySelector('.msg-trans-body');
+  const willOpen = !body.classList.contains('open');
+  body.classList.toggle('open', willOpen);
+  btn.classList.toggle('open', willOpen);
+  const label = btn.querySelector('.label');
+  if (label) label.textContent = willOpen ? '收起翻译' : '显示翻译';
+}
+
+function buildTranslationBox(translation, forceOpen) {
+  const s = DB.get('appSettings') || {};
+  const open = forceOpen !== undefined ? forceOpen : s.translationDefaultOpen === true;
+  const box = document.createElement('div');
+  box.className = 'msg-translation';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'msg-trans-toggle' + (open ? ' open' : '');
+  btn.innerHTML = '<span class="arrow">▸</span><span class="label">' + (open ? '收起翻译' : '显示翻译') + '</span>';
+  btn.addEventListener('click', function(e) { e.stopPropagation(); toggleTranslationBox(btn); });
+  const body = document.createElement('div');
+  body.className = 'msg-trans-body' + (open ? ' open' : '');
+  body.textContent = translation;
+  box.appendChild(btn);
+  box.appendChild(body);
+  return box;
+}
+
+// 旧数据兜底：历史里只有「[xx发送了一个表情包：描述]」时，按描述找回图片
+function resolveStickerByContent(content) {
+  if (!content) return '';
+  const m = String(content).match(/表情包[：:]\s*([^\]]+)\]/);
+  if (!m) return '';
+  const key = m[1].trim().toLowerCase();
+  if (!key) return '';
+  const cats = DB.get('stickerCategories') || [];
+  for (const cat of cats) {
+    for (const item of (cat.items || [])) {
+      if (typeof item !== 'object') continue;
+      const desc = (item.desc || '').trim().toLowerCase();
+      if (desc && (desc === key || desc.indexOf(key) >= 0 || key.indexOf(desc) >= 0)) return item.url || '';
+    }
+  }
+  return '';
+}
+
+function isStickerContent(content) {
+  return /^\[[^\]]*发送了一个表情包/.test(String(content || ''));
+}
+
+// 给聊天区最后一条消息挂上翻译
+function attachTranslationToLastMsg(translation) {
+  if (!translation) return false;
+  const messagesEl = document.getElementById('chat-messages');
+  const rows = messagesEl.querySelectorAll('.msg-row');
+  const row = rows[rows.length - 1];
+  if (!row) return false;
+  const bubble = row.querySelector('.msg-bubble');
+  if (!bubble || !bubble.parentElement) return false;
+  const wrap = bubble.parentElement;
+  const existing = wrap.querySelector('.msg-translation');
+  const box = buildTranslationBox(translation);
+  if (existing) wrap.replaceChild(box, existing);
+  else {
+    const timeEl = wrap.querySelector('.msg-time');
+    if (timeEl) wrap.insertBefore(box, timeEl);
+    else wrap.appendChild(box);
+  }
+  return true;
+}
+
+// 一键展开 / 折叠全部翻译
+function toggleAllTranslations() {
+  const bodies = document.querySelectorAll('#chat-messages .msg-trans-body');
+  if (!bodies.length) { alert('本次对话还没有翻译内容'); return; }
+  let anyClosed = false;
+  bodies.forEach(b => { if (!b.classList.contains('open')) anyClosed = true; });
+  bodies.forEach(b => {
+    b.classList.toggle('open', anyClosed);
+    const btn = b.parentElement.querySelector('.msg-trans-toggle');
+    if (btn) {
+      btn.classList.toggle('open', anyClosed);
+      const label = btn.querySelector('.label');
+      if (label) label.textContent = anyClosed ? '收起翻译' : '显示翻译';
+    }
+  });
+}
+
+// ---------- 语言 / 翻译指令注入 ----------
+function buildLanguageInstruction() {
+  const s = DB.get('appSettings') || {};
+  const learn = getLangName(getLearnLang());
+  const native = getLangName(getNativeLang());
+  if (!isTranslationOn()) {
+    return '\n\n[语言] 回复语言与用户保持一致。';
+  }
+  return '\n\n[语言与翻译规则 · 必须遵守]'
+    + '\n1. 你说的每一句话都必须使用' + learn + '，不要使用' + native + '（除非用户明确要求）。'
+    + '\n2. 每条消息的正文之后另起一行，用下面这个格式附上该条消息的' + native + '翻译：'
+    + '\n[[TR]]这里放' + native + '翻译[[/TR]]'
+    + '\n3. 翻译标记必须原样写成 [[TR]] 和 [[/TR]]，中间只放译文，不要加解释、不要加引号。'
+    + '\n4. 多条消息之间仍然用空行分隔，每一条消息都要各自带自己的 [[TR]]…[[/TR]]。'
+    + '\n5. 表情包消息（[STICKER]）不需要翻译。';
+}
+
+// 包一层最终的 buildChatSystemPrompt，追加语言/翻译规则
+const _v3_origBuildPrompt = buildChatSystemPrompt;
+buildChatSystemPrompt = function(wordsAllDone) {
+  return _v3_origBuildPrompt(wordsAllDone) + buildLanguageInstruction();
+};
 
 // ============ 数据导入导出 ============
 function exportAllData() {
@@ -9893,18 +11013,245 @@ openSubPage = function(pageId) {
 };
 
 
-function speakWord(word) {
-  if (!word || word === '---') return;
-  if (!window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(word.trim());
-  const isJapanese = /[぀-ヿ㐀-䶿一-鿿]/.test(word);
-  utter.lang = isJapanese ? 'ja-JP' : 'en-US';
-  utter.rate = 0.82;
-  const voices = window.speechSynthesis.getVoices();
-  const preferred = voices.find(v => v.lang.startsWith(isJapanese ? 'ja' : 'en'));
-  if (preferred) utter.voice = preferred;
-  window.speechSynthesis.speak(utter);
+// 依据字符集猜测语言，词书没有标 lang 时兜底
+function detectTextLang(text) {
+  if (/[\u3040-\u30ff]/.test(text)) return 'ja';
+  if (/[\uac00-\ud7af]/.test(text)) return 'ko';
+  if (/[\u0400-\u04ff]/.test(text)) return 'ru';
+  if (/[\u4e00-\u9fff]/.test(text)) return 'zh';
+  return null;
+}
+
+// ============================================================
+//  语音库：在线真人/引擎发音 + 系统合成兜底
+//  很多环境（iOS PWA、部分安卓 WebView、内置浏览器）没有可用的
+//  SpeechSynthesis 引擎，只靠 TTS 会完全没有声音，所以这里优先用音频源。
+// ============================================================
+
+// 有道词典发音的语言代码（英语不带 le，用 type 区分英美音）
+const YOUDAO_LE = { ja: 'jap', ko: 'ko', fr: 'fr', de: 'de', es: 'es', it: 'it', ru: 'ru', pt: 'pt', zh: 'zh' };
+// Google 翻译发音的语言代码
+const GTTS_LANG = { en: 'en', ja: 'ja', ko: 'ko', fr: 'fr', es: 'es', de: 'de', it: 'it', ru: 'ru', pt: 'pt', zh: 'zh-CN' };
+
+const VOICE_SOURCES = {
+  youdao: {
+    name: '有道词典发音',
+    build(word, lang, accent) {
+      const q = encodeURIComponent(word);
+      if (lang === 'en') return 'https://dict.youdao.com/dictvoice?audio=' + q + '&type=' + (accent === 'uk' ? '1' : '2');
+      const le = YOUDAO_LE[lang];
+      return le ? 'https://dict.youdao.com/dictvoice?audio=' + q + '&le=' + le : null;
+    }
+  },
+  google: {
+    name: 'Google 翻译发音',
+    build(word, lang) {
+      const tl = GTTS_LANG[lang];
+      if (!tl) return null;
+      return 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=' + tl + '&q=' + encodeURIComponent(word);
+    }
+  }
+};
+
+function getVoiceSettings() {
+  const s = DB.get('appSettings') || {};
+  return {
+    source: s.voiceSource || 'auto',      // auto | youdao | google | tts
+    accent: s.voiceAccent || 'us',        // us | uk（仅英语）
+    rate: typeof s.voiceRate === 'number' ? s.voiceRate : 0.9,
+    autoSpeak: s.autoSpeak === true
+  };
+}
+
+// 记住某个语言上一次成功的音频源，避免每次都从失败的源重试
+const _voiceSourceHint = {};
+let _currentAudio = null;
+let _voiceToastAt = 0;
+
+function stopCurrentAudio() {
+  if (_currentAudio) {
+    try { _currentAudio.pause(); } catch (e) {}
+    _currentAudio = null;
+  }
+  if (window.speechSynthesis) { try { window.speechSynthesis.cancel(); } catch (e) {} }
+}
+
+// 尝试播放一个音频地址；成功开始播放返回 true，出错或超时返回 false
+function tryPlayAudioUrl(url, rate) {
+  return new Promise(resolve => {
+    let settled = false;
+    const audio = new Audio();
+    audio.preload = 'auto';
+    const finish = ok => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      audio.removeEventListener('playing', onPlaying);
+      audio.removeEventListener('error', onError);
+      if (!ok) { try { audio.pause(); } catch (e) {} }
+      resolve(ok);
+    };
+    const onPlaying = () => finish(true);
+    const onError = () => finish(false);
+    audio.addEventListener('playing', onPlaying);
+    audio.addEventListener('error', onError);
+    const timer = setTimeout(() => finish(false), 4500);
+
+    audio.src = url;
+    try { audio.playbackRate = rate; } catch (e) {}
+    _currentAudio = audio;
+    const p = audio.play();
+    if (p && typeof p.catch === 'function') p.catch(() => finish(false));
+  });
+}
+
+// 系统语音合成：等待语音列表就绪，规避 cancel/speak 竞态
+function getVoicesAsync(timeout) {
+  return new Promise(resolve => {
+    const synth = window.speechSynthesis;
+    if (!synth) return resolve([]);
+    const existing = synth.getVoices();
+    if (existing && existing.length) return resolve(existing);
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      synth.removeEventListener && synth.removeEventListener('voiceschanged', finish);
+      resolve(synth.getVoices() || []);
+    };
+    if (synth.addEventListener) synth.addEventListener('voiceschanged', finish);
+    setTimeout(finish, timeout || 1200);
+  });
+}
+
+let _ttsUnlocked = false;
+// iOS / 部分浏览器要求首次 speak 发生在用户手势里，否则之后一直静音
+function unlockTTS() {
+  if (_ttsUnlocked || !window.speechSynthesis) return;
+  try {
+    const u = new SpeechSynthesisUtterance(' ');
+    u.volume = 0;
+    window.speechSynthesis.speak(u);
+    _ttsUnlocked = true;
+  } catch (e) {}
+}
+['pointerdown', 'touchstart', 'click', 'keydown'].forEach(evt => {
+  document.addEventListener(evt, unlockTTS, { once: true, passive: true });
+});
+
+async function speakWithTTS(word, lang, rate) {
+  const synth = window.speechSynthesis;
+  if (!synth) return false;
+  try {
+    synth.cancel();
+    const speechLang = getLangSpeech(lang);
+    const voices = await getVoicesAsync(1200);
+    const prefix = speechLang.split('-')[0];
+    const preferred = voices.find(v => v.lang === speechLang)
+      || voices.find(v => (v.lang || '').replace('_', '-').indexOf(prefix) === 0);
+    // 设备上完全没有该语言的语音时，直接判失败，让上层提示用户
+    if (voices.length && !preferred && prefix !== 'en') return false;
+
+    const utter = new SpeechSynthesisUtterance(String(word).trim());
+    utter.lang = speechLang;
+    utter.rate = rate;
+    // 个别引擎给出的 voice 对象赋值会抛错，不能因此让整条发音链断掉
+    if (preferred) { try { utter.voice = preferred; } catch (e) {} }
+
+    return await new Promise(resolve => {
+      let settled = false;
+      const finish = ok => { if (!settled) { settled = true; resolve(ok); } };
+      utter.onstart = () => finish(true);
+      utter.onend = () => finish(true);
+      utter.onerror = () => finish(false);
+      // cancel() 后立刻 speak 在部分 Chrome 上会被吞掉，延后一拍
+      setTimeout(() => {
+        try { synth.speak(utter); } catch (e) { finish(false); }
+      }, 30);
+      setTimeout(() => finish(false), 3000);
+    });
+  } catch (e) {
+    return false;
+  }
+}
+
+function showVoiceToast(msg) {
+  const now = Date.now();
+  if (now - _voiceToastAt < 4000) return;   // 别刷屏
+  _voiceToastAt = now;
+  if (typeof showDistractionToast === 'function') showDistractionToast(msg);
+}
+
+// 核心：按顺序尝试各个发音源
+async function playWordAudio(word, langCode, btnEl, opts) {
+  const text = String(word == null ? '' : word).trim();
+  if (!text || text === '---') return false;
+
+  const cfg = getVoiceSettings();
+  const lang = langCode || detectTextLang(text) || getLearnLang();
+  stopCurrentAudio();
+  if (btnEl) btnEl.classList.add('speaking');
+
+  let order;
+  if (cfg.source === 'tts') order = [];
+  else if (cfg.source === 'auto') {
+    const hint = _voiceSourceHint[lang];
+    order = hint ? [hint].concat(Object.keys(VOICE_SOURCES).filter(k => k !== hint))
+                 : Object.keys(VOICE_SOURCES);
+  } else order = [cfg.source];
+
+  let ok = false;
+  for (const key of order) {
+    const src = VOICE_SOURCES[key];
+    if (!src) continue;
+    const url = src.build(text, lang, cfg.accent);
+    if (!url) continue;
+    ok = await tryPlayAudioUrl(url, cfg.rate);
+    if (ok) { _voiceSourceHint[lang] = key; break; }
+  }
+
+  // 在线源都失败（离线、被墙、被拦截）时退回系统合成
+  if (!ok && cfg.source !== 'youdao' && cfg.source !== 'google') {
+    ok = await speakWithTTS(text, lang, cfg.rate);
+  }
+
+  if (btnEl) btnEl.classList.remove('speaking');
+  if (!ok && !(opts && opts.silent)) {
+    showVoiceToast('发音失败：请检查网络，或在「语言与翻译」里换一个发音源');
+  }
+  return ok;
+}
+
+// 保持旧调用方式可用（卡片、词表里的 onclick）
+function speakWord(word, langCode, btnEl) {
+  playWordAudio(word, langCode, btnEl);
+}
+
+// 点击喇叭按钮：不要连带触发卡片翻转
+function speakFromButton(e, word, langCode) {
+  if (e) { e.stopPropagation(); e.preventDefault(); }
+  const btn = e && e.currentTarget ? e.currentTarget : null;
+  playWordAudio(word, langCode, btn);
+}
+
+// 朗读当前卡片的单词 / 例句
+function speakCurrentWord(e) {
+  const cardEl = document.getElementById('study-card');
+  if (!cardEl || !cardEl.dataset.word) return;
+  const w = JSON.parse(cardEl.dataset.word);
+  speakFromButton(e, w.word, getWordLang(w));
+}
+function speakCurrentExample(e) {
+  const cardEl = document.getElementById('study-card');
+  if (!cardEl || !cardEl.dataset.word) return;
+  const w = JSON.parse(cardEl.dataset.word);
+  if (!w.example) return;
+  speakFromButton(e, w.example, getWordLang(w));
+}
+function getWordLang(w) {
+  if (!w) return getLearnLang();
+  const wb = w.wbId ? getWordbookData(w.wbId) : null;
+  return (wb && wb.lang) || detectTextLang(w.word) || getLearnLang();
 }
 
 
@@ -9929,24 +11276,149 @@ function toggleFocusMode() {
     const s = DB.get('appSettings'); s.focusMode = !s.focusMode; DB.set('appSettings', s); updateFocusUI();
 }
 function updateFocusUI() {
-    const s = DB.get('appSettings') || {}; const btn = document.getElementById('focus-toggle-btn');
+    const s = DB.get('appSettings') || {};
+    const btn = document.getElementById('focus-toggle-btn');
     if (btn) { btn.textContent = s.focusMode ? '关闭监测' : '开启监测'; btn.style.background = s.focusMode ? 'var(--danger-light)' : 'var(--accent)'; }
-}
-document.addEventListener('visibilitychange', () => {
-    const s = DB.get('appSettings'); if (document.hidden && s && s.focusMode) { 
-        s.lastDistractionCount = (s.lastDistractionCount || 0) + 1; DB.set('appSettings', s); 
+    const statEl = document.getElementById('focus-stat-text');
+    if (statEl) {
+        const st = (s.focusStats && s.focusStats.date === todayStr()) ? s.focusStats : { count: 0, awayMs: 0 };
+        statEl.textContent = st.count === 0
+            ? '今天还没有分心记录 👍'
+            : `今日分心 ${st.count} 次，累计离开 ${formatAwayDuration(st.awayMs)}`;
     }
-});
+}
+function updateSpellingSetting(val) {
+    const s = DB.get('appSettings') || {};
+    s.spellingEnabled = (val === 'true');
+    DB.set('appSettings', s);
+    if (!s.spellingEnabled) resetSpellingArea();
+}
 
-function updateSpellingSetting(val) { const s = DB.get('appSettings'); s.spellingEnabled = (val === 'true'); DB.set('appSettings', s); }
+// —— 拼写归一化：忽略大小写、首尾空格、重音符号与连字符差异 ——
+function normalizeSpelling(str) {
+    let s = String(str == null ? '' : str).toLowerCase().trim().replace(/\s+/g, ' ');
+    if (s.normalize) s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return s;
+}
+
+function resetSpellingArea() {
+    const area = document.getElementById('spelling-area');
+    if (!area) return;
+    area.style.display = 'none';
+    const input = document.getElementById('spelling-input');
+    if (input) { input.value = ''; input.className = 'spelling-input'; input.disabled = false; }
+    const ph = document.getElementById('spelling-placeholder');
+    if (ph) ph.textContent = '';
+    const msg = document.getElementById('spelling-msg');
+    if (msg) { msg.textContent = ''; msg.style.color = ''; }
+    spellingState = { active: false, target: '', raw: '', missed: false, solved: false };
+}
+
+function startSpellingFor(word) {
+    const area = document.getElementById('spelling-area');
+    if (!area) return;
+    spellingState = {
+        active: true,
+        target: normalizeSpelling(word),
+        raw: String(word || ''),
+        missed: false,
+        solved: false
+    };
+    area.style.display = 'block';
+    const input = document.getElementById('spelling-input');
+    input.value = '';
+    input.disabled = false;
+    input.className = 'spelling-input';
+    document.getElementById('spelling-msg').textContent = '';
+    renderSpellingMask('');
+    setTimeout(() => input.focus(), 60);
+}
+
+// 已输入部分显示出来，未输入部分显示下划线（空格原样保留）
+function renderSpellingMask(input) {
+    const ph = document.getElementById('spelling-placeholder');
+    if (!ph) return;
+    const raw = spellingState.raw;
+    const typed = normalizeSpelling(input);
+    let out = '';
+    for (let i = 0; i < raw.length; i++) {
+        const ch = raw[i];
+        if (ch === ' ') { out += '  '; continue; }
+        out += (i < typed.length ? ch : '_');
+    }
+    ph.textContent = out;
+}
+
 function checkSpelling(val) {
-    const cardEl = document.getElementById('study-card'); const wordData = JSON.parse(cardEl.dataset.word);
-    const target = wordData.word.toLowerCase(); const input = val.toLowerCase();
+    if (!spellingState.active) return;
     const el = document.getElementById('spelling-input');
-    if (target.startsWith(input)) {
+    const msg = document.getElementById('spelling-msg');
+    const target = spellingState.target;
+    const input = normalizeSpelling(val);
+
+    renderSpellingMask(val);
+
+    if (input === '') {                       // 空输入不算对也不算错
+        el.className = 'spelling-input';
+        msg.textContent = '';
+        return;
+    }
+
+    if (input === target) {
         el.className = 'spelling-input correct';
-        if (input === target) { setTimeout(() => { document.getElementById('study-btns-know').style.display = 'flex'; el.blur(); }, 200); }
-    } else { el.className = 'spelling-input wrong'; if (window.navigator.vibrate) window.navigator.vibrate(100); }
+        msg.style.color = 'var(--success)';
+        msg.textContent = spellingState.missed ? '拼对了（中途有误）' : '拼写正确 ✓';
+        spellingState.solved = true;
+        spellingState.active = false;
+        el.disabled = true;
+        if (window.navigator.vibrate) window.navigator.vibrate(30);
+        setTimeout(() => {
+            el.blur();
+            document.getElementById('study-btns-know').style.display = 'flex';
+        }, 250);
+        return;
+    }
+
+    if (target.indexOf(input) === 0) {        // 前缀正确，继续拼
+        el.className = 'spelling-input correct';
+        msg.style.color = '';
+        msg.textContent = '还差 ' + (target.length - input.length) + ' 个字母';
+    } else {
+        el.className = 'spelling-input wrong';
+        spellingState.missed = true;
+        msg.style.color = 'var(--danger)';
+        // 提示第一个拼错的位置
+        let i = 0;
+        while (i < input.length && i < target.length && input[i] === target[i]) i++;
+        msg.textContent = '第 ' + (i + 1) + ' 个字母不对，删掉重试';
+        if (window.navigator.vibrate) window.navigator.vibrate(80);
+    }
+}
+
+function onSpellingKeydown(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        if (spellingState.solved) answerWord(true);
+        else revealSpellingAnswer();
+    }
+}
+
+function revealSpellingAnswer() {
+    if (!spellingState.raw) return;
+    const el = document.getElementById('spelling-input');
+    const msg = document.getElementById('spelling-msg');
+    spellingState.missed = true;
+    spellingState.active = false;
+    spellingState.solved = false;
+    el.value = spellingState.raw;
+    el.className = 'spelling-input wrong';
+    el.disabled = true;
+    const ph = document.getElementById('spelling-placeholder');
+    if (ph) ph.textContent = spellingState.raw;
+    msg.style.color = 'var(--danger)';
+    msg.textContent = '答案：' + spellingState.raw;
+    el.blur();
+    document.getElementById('study-btns-know').style.display = 'flex';
 }
 
 function syncScreenTime() {
@@ -9959,27 +11431,100 @@ const _baseOpen = openSubPage;
 openSubPage = function(id) {
     _baseOpen(id);
     if (id === 'focus-settings') {
-        const s = DB.get('appSettings');
+        const s = DB.get('appSettings') || {};
         document.getElementById('setting-spelling').value = s.spellingEnabled ? 'true' : 'false';
         updateFocusUI();
     }
+    if (id === 'lang-settings') initLangSettings();
 };
+
+function initLangSettings() {
+    const s = DB.get('appSettings') || {};
+    const learnSel = document.getElementById('setting-learn-lang');
+    const nativeSel = document.getElementById('setting-native-lang');
+    const opts = Object.keys(LANG_META).map(code =>
+        '<option value="' + code + '">' + LANG_META[code].name + '</option>').join('');
+    learnSel.innerHTML = opts;
+    nativeSel.innerHTML = opts;
+    learnSel.value = s.learnLang || 'en';
+    nativeSel.value = s.nativeLang || 'zh';
+    document.getElementById('setting-translation').value = s.translationEnabled ? 'true' : 'false';
+    document.getElementById('setting-translation-open').value = s.translationDefaultOpen ? 'true' : 'false';
+
+    const v = getVoiceSettings();
+    document.getElementById('setting-voice-source').value = v.source;
+    document.getElementById('setting-voice-accent').value = v.accent;
+    document.getElementById('setting-voice-rate').value = v.rate;
+    document.getElementById('voice-rate-val').innerText = v.rate;
+    document.getElementById('setting-auto-speak').value = v.autoSpeak ? 'true' : 'false';
+    document.getElementById('voice-test-result').textContent = '';
+    updateLangTip();
+}
+
+function saveVoiceSettings() {
+    const s = DB.get('appSettings') || {};
+    s.voiceSource = document.getElementById('setting-voice-source').value;
+    s.voiceAccent = document.getElementById('setting-voice-accent').value;
+    s.voiceRate = parseFloat(document.getElementById('setting-voice-rate').value) || 0.9;
+    s.autoSpeak = document.getElementById('setting-auto-speak').value === 'true';
+    DB.set('appSettings', s);
+    Object.keys(_voiceSourceHint).forEach(k => delete _voiceSourceHint[k]);   // 换源后重新探测
+}
+
+async function testVoice() {
+    const resultEl = document.getElementById('voice-test-result');
+    const lang = getLearnLang();
+    const samples = { en: 'hello', ja: 'こんにちは', ko: '안녕하세요', fr: 'bonjour', es: 'hola', de: 'hallo',
+                      it: 'ciao', ru: 'привет', pt: 'olá', zh: '你好' };
+    const word = samples[lang] || 'hello';
+    resultEl.style.color = '';
+    resultEl.textContent = '正在试听「' + word + '」…';
+    const ok = await playWordAudio(word, lang);
+    if (ok) {
+        const used = _voiceSourceHint[lang];
+        resultEl.style.color = 'var(--success)';
+        resultEl.textContent = '播放成功' + (used && VOICE_SOURCES[used] ? '（来源：' + VOICE_SOURCES[used].name + '）' : '（系统语音合成）');
+    } else {
+        resultEl.style.color = 'var(--danger)';
+        resultEl.textContent = '没有声音：请检查设备音量/静音键与网络，或换一个发音来源。';
+    }
+}
+
+function updateLangTip() {
+    const tip = document.getElementById('lang-settings-tip');
+    if (!tip) return;
+    const s = DB.get('appSettings') || {};
+    const wb = getWordbookData(s.activeWordbookId);
+    tip.textContent = wb
+        ? '当前词书《' + wb.name + '》语言：' + getLangName(wb.lang) + '，实际学习语言以词书为准。'
+        : '还没有选择词书，学习语言按上面的设置。';
+}
+
+function saveLangSettings() {
+    const s = DB.get('appSettings') || {};
+    s.learnLang = document.getElementById('setting-learn-lang').value;
+    s.nativeLang = document.getElementById('setting-native-lang').value;
+    s.translationEnabled = document.getElementById('setting-translation').value === 'true';
+    s.translationDefaultOpen = document.getElementById('setting-translation-open').value === 'true';
+    DB.set('appSettings', s);
+    updateLangTip();
+    if (typeof updateTranslationMenuLabel === 'function') updateTranslationMenuLabel();
+}
 
 // 拦截原有的 tapStudyCard 增加拼写触发
 const _baseTap = tapStudyCard;
 tapStudyCard = function() {
     const cardEl = document.getElementById('study-card');
     if (cardEl.dataset.revealed === 'true') return;
+    if (!cardEl.dataset.word) return;
     _baseTap();
-    const s = DB.get('appSettings');
-    if (s.spellingEnabled) {
-        document.getElementById('study-btns-know').style.display = 'none';
-        document.getElementById('spelling-area').style.display = 'block';
-        document.getElementById('spelling-input').value = '';
-        document.getElementById('spelling-input').focus();
-        const wordData = JSON.parse(cardEl.dataset.word);
-        document.getElementById('spelling-placeholder').textContent = '_ '.repeat(wordData.word.length);
-    }
+    const s = DB.get('appSettings') || {};
+    if (!s.spellingEnabled) return;
+    const wordData = JSON.parse(cardEl.dataset.word);
+    // 拼写模式对中日韩这类非拼音文字意义不大，自动跳过
+    if (/[\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af]/.test(wordData.word || '')) return;
+    document.getElementById('study-btns-know').style.display = 'none';
+    startSpellingFor(wordData.word);
 };
 
 
@@ -10011,24 +11556,72 @@ function showDistractionToast(msg) {
     setTimeout(() => toast.remove(), 3000);
 }
 
-// 增强的分心监测
-document.addEventListener('visibilitychange', () => {
-    const s = DB.get('appSettings');
-    if (document.hidden && s && s.focusMode) {
-        s.lastDistractionCount = (s.lastDistractionCount || 0) + 1;
+// ============ 分心监测（按天统计，一次切走只计一次） ============
+const DISTRACTION_MIN_MS = 3000;   // 切走不足 3 秒（通知、来电等）不计为分心
+let _awayStartedAt = 0;
+
+// 取出今日分心数据，跨天自动归零
+function getFocusStats() {
+    const s = DB.get('appSettings') || {};
+    const today = todayStr();
+    if (!s.focusStats || s.focusStats.date !== today) {
+        s.focusStats = { date: today, count: 0, awayMs: 0 };
+        s.lastDistractionCount = 0;
         DB.set('appSettings', s);
-    } else if (!document.hidden && s && s.focusMode && s.lastDistractionCount > 0) {
-        showDistractionToast(`刚才分心了！当前累计分心 ${s.lastDistractionCount} 次`);
     }
+    return s.focusStats;
+}
+
+function formatAwayDuration(ms) {
+    const sec = Math.round(ms / 1000);
+    if (sec < 60) return sec + ' 秒';
+    const min = Math.floor(sec / 60);
+    if (min < 60) return min + ' 分' + (sec % 60 ? (sec % 60) + ' 秒' : '');
+    return Math.floor(min / 60) + ' 小时' + (min % 60 ? (min % 60) + ' 分' : '');
+}
+
+function resetDistractionCount() {
+    const s = DB.get('appSettings') || {};
+    s.focusStats = { date: todayStr(), count: 0, awayMs: 0 };
+    s.lastDistractionCount = 0;
+    DB.set('appSettings', s);
+    updateFocusUI();
+    showDistractionToast('今日分心记录已清零');
+}
+
+document.addEventListener('visibilitychange', () => {
+    const s = DB.get('appSettings') || {};
+    if (!s.focusMode) { _awayStartedAt = 0; return; }
+
+    if (document.hidden) {
+        // 只记录离开时刻，回来时再判定是否算一次分心
+        if (!_awayStartedAt) _awayStartedAt = Date.now();
+        return;
+    }
+
+    if (!_awayStartedAt) return;
+    const awayMs = Date.now() - _awayStartedAt;
+    _awayStartedAt = 0;
+    if (awayMs < DISTRACTION_MIN_MS) return;
+
+    getFocusStats();                       // 确保跨天已重置
+    const cur = DB.get('appSettings') || {};
+    cur.focusStats.count += 1;
+    cur.focusStats.awayMs += awayMs;
+    cur.lastDistractionCount = cur.focusStats.count;   // 兼容旧字段
+    DB.set('appSettings', cur);
+    updateFocusUI();
+    showDistractionToast(`离开了 ${formatAwayDuration(awayMs)}，今日累计分心 ${cur.focusStats.count} 次`);
 });
 
 // AI Prompt 补丁：让 AI 发现你的分心
 const _origBuildPrompt = buildChatSystemPrompt;
 buildChatSystemPrompt = function(done) {
     let prompt = _origBuildPrompt(done);
-    const s = DB.get('appSettings');
-    if (s.focusMode && s.lastDistractionCount > 0) {
-        prompt += `\n[专注提醒] 用户在刚才的学习中分心了 ${s.lastDistractionCount} 次。请在对话中以你的性格对此进行评价（可以毒舌、担忧或鼓励）。`;
+    const s = DB.get('appSettings') || {};
+    const fs = (s.focusStats && s.focusStats.date === todayStr()) ? s.focusStats : null;
+    if (s.focusMode && fs && fs.count > 0) {
+        prompt += `\n[专注提醒] 用户今天学习时分心了 ${fs.count} 次，累计离开 ${formatAwayDuration(fs.awayMs)}。请在对话中以你的性格对此进行评价（可以毒舌、担忧或鼓励）。`;
     }
     if (s.screenTimeData) {
         prompt += `\n[屏幕时间参考] 用户今天的 App 使用情况：${JSON.stringify(s.screenTimeData)}。如果发现娱乐时间过长，请提醒用户。`;
@@ -10058,8 +11651,10 @@ buildChatSystemPrompt = function(done) {
 
         <div class="form-group">
             <label>分心监测 (手动开启)</label>
-            <p class="note">开启后，切出 App 会被记录。</p>
+            <p class="note">开启后，切出 App 超过 3 秒会被记为一次分心；每天零点自动清零。</p>
             <button id="focus-toggle-btn" class="btn" style="width:100%;" onclick="toggleFocusMode()">开启监测</button>
+            <p class="note" id="focus-stat-text" style="margin-top:10px;">今天还没有分心记录 👍</p>
+            <button class="btn" style="width:100%;margin-top:8px;background:#F3F4F6;color:var(--text-main);" onclick="resetDistractionCount()">清零今日记录</button>
         </div>
         <div class="form-group">
             <label>拼写模式</label>
@@ -10068,6 +11663,76 @@ buildChatSystemPrompt = function(done) {
                 <option value="false">关闭</option>
             </select>
         </div>
+    </div>
+</div>
+<div id="lang-settings" class="sub-page">
+    <div class="sub-page-header">
+        <span class="back-btn" onclick="closeSubPage('lang-settings')">返回</span>
+        <span class="page-title">语言与翻译</span>
+        <span style="width:44px;"></span>
+    </div>
+    <div class="sub-page-content">
+        <div class="form-group">
+            <label>学习语言</label>
+            <p class="note">选择词书后会自动跟随词书语言，这里的设置用于对话与朗读的兜底。</p>
+            <select id="setting-learn-lang" onchange="saveLangSettings()"></select>
+        </div>
+        <div class="form-group">
+            <label>我的母语（翻译语言）</label>
+            <p class="note">AI 的翻译、词义解释会用这门语言。</p>
+            <select id="setting-native-lang" onchange="saveLangSettings()"></select>
+        </div>
+        <div class="form-group">
+            <label>对话翻译</label>
+            <p class="note">开启后角色全程用学习语言说话，并在每条消息下方附上可折叠的母语翻译。</p>
+            <select id="setting-translation" onchange="saveLangSettings()">
+                <option value="false">关闭</option>
+                <option value="true">开启</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>翻译默认展开</label>
+            <p class="note">关闭时译文默认折叠，点击「显示翻译」再展开。</p>
+            <select id="setting-translation-open" onchange="saveLangSettings()">
+                <option value="false">默认折叠</option>
+                <option value="true">默认展开</option>
+            </select>
+        </div>
+        <div class="form-group" style="margin-top:26px;border-top:1px solid var(--border-color);padding-top:20px;">
+            <label>发音来源</label>
+            <p class="note">优先使用在线词典发音；离线或加载失败时自动回退到系统语音合成。</p>
+            <select id="setting-voice-source" onchange="saveVoiceSettings()">
+                <option value="auto">自动（在线发音 + 系统合成兜底）</option>
+                <option value="youdao">有道词典发音</option>
+                <option value="google">Google 翻译发音</option>
+                <option value="tts">仅系统语音合成（离线可用）</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>英语口音</label>
+            <select id="setting-voice-accent" onchange="saveVoiceSettings()">
+                <option value="us">美音</option>
+                <option value="uk">英音</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>语速：<span id="voice-rate-val" class="val-display">0.9</span></label>
+            <input type="range" id="setting-voice-rate" min="0.5" max="1.3" step="0.05" value="0.9"
+                   oninput="document.getElementById('voice-rate-val').innerText=this.value" onchange="saveVoiceSettings()">
+        </div>
+        <div class="form-group">
+            <label>自动发音</label>
+            <p class="note">开启后，每次出现新单词会自动朗读一次。</p>
+            <select id="setting-auto-speak" onchange="saveVoiceSettings()">
+                <option value="false">关闭</option>
+                <option value="true">开启</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <button class="btn" style="width:100%;background:#F3F4F6;color:var(--text-main);" onclick="testVoice()">试听发音</button>
+            <p class="note" id="voice-test-result" style="margin-top:8px;min-height:18px;"></p>
+        </div>
+        <p class="note" id="lang-settings-tip" style="margin-top:16px;"></p>
     </div>
 </div>
 <div id="screen-time-sync" class="sub-page">
