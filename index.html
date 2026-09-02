@@ -9841,61 +9841,13 @@ renderPresetList();
 initWordsTab();
 
 
-if ('serviceWorker' in navigator) {
-  const swCode = `
-    const CACHE_NAME = 'word-app-v3';
-    self.addEventListener('install', function(e) {
-      self.skipWaiting();
-    });
-    self.addEventListener('activate', function(e) {
-      e.waitUntil(
-        caches.keys().then(function(keys) {
-          return Promise.all(keys.map(function(k) {
-            return k === CACHE_NAME ? null : caches.delete(k);
-          }));
-        }).then(function() { return clients.claim(); })
-      );
-    });
-
-    function putSafe(req, res) {
-      // 只缓存同源的正常响应；跨域是 opaque 响应，cache.put 会抛错
-      if (!res || res.status !== 200 || res.type !== 'basic') return;
-      caches.open(CACHE_NAME).then(function(cache) {
-        try { cache.put(req, res); } catch (err) {}
-      }).catch(function() {});
-    }
-
-    self.addEventListener('fetch', function(e) {
-      var req = e.request;
-      if (req.method !== 'GET') return;                 // 非 GET 一律放行
-      var url;
-      try { url = new URL(req.url); } catch (err) { return; }
-      if (url.origin !== self.location.origin) return;  // 跨域（词库/发音）完全不拦截
-
-      var isDoc = req.mode === 'navigate' || (req.headers.get('accept') || '').indexOf('text/html') >= 0;
-      if (isDoc) {
-        // 页面本体：网络优先，保证能更新到新版本
-        e.respondWith(
-          fetch(req).then(function(res) { putSafe(req, res.clone()); return res; })
-                    .catch(function() { return caches.match(req); })
-        );
-        return;
-      }
-      // 其它同源静态资源：缓存优先，后台补缓存
-      e.respondWith(
-        caches.match(req).then(function(cached) {
-          if (cached) return cached;
-          return fetch(req).then(function(res) { putSafe(req, res.clone()); return res; });
-        })
-      );
-    });
-  `;
-  const blob = new Blob([swCode], {type: 'application/javascript'});
-  const swUrl = URL.createObjectURL(blob);
-  navigator.serviceWorker.register(swUrl).then(function(reg) {
-    console.log('SW registered');
-  }).catch(function(err) {
-    console.log('SW failed: ', err);
+// Service Worker：必须用同源的独立文件注册。
+// 旧版本把脚本写成 blob: URL，Chrome 会拒绝注册，离线缓存从未真正生效。
+if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('sw.js')
+      .then(function() { console.log('SW registered'); })
+      .catch(function(err) { console.log('SW failed:', err && err.message); });
   });
 }
 // ============ 持久化聊天历史 ============
