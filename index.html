@@ -2883,6 +2883,19 @@ body.theme-glass .chat-messages {
       <p class="note">localStorage 当前使用量（约估，不含IndexedDB）</p>
       <div id="storage-usage" style="font-size:15px;font-weight:600;color:var(--text-main);padding-top:4px;"></div>
     </div>
+    <div class="form-group" style="margin-top:16px;">
+      <label>清理词库缓存</label>
+      <p class="note">删除已下载词库的本地副本（学习进度不受影响），下次使用时会重新下载。</p>
+      <button class="btn" style="width:100%;padding:13px;font-size:15px;background:#F3F4F6;color:var(--text-main);"
+        onclick="clearWordbookCaches()">清理词库缓存</button>
+    </div>
+    <div class="form-group" style="margin-top:16px;">
+      <label>强制更新应用</label>
+      <p class="note">页面被离线缓存卡住、改动一直不生效时用这个：会注销 Service Worker、
+        清空离线缓存并重新加载。你的学习数据不会被删除。</p>
+      <button class="btn" style="width:100%;padding:13px;font-size:15px;background:#F3F4F6;color:var(--text-main);"
+        onclick="forceAppUpdate()">清除缓存并重新加载</button>
+    </div>
   </div>
 </div>
 
@@ -14081,6 +14094,33 @@ function importAllData(event) {
   };
   reader.readAsText(file);
   event.target.value = '';
+}
+
+function clearWordbookCaches() {
+  const keys = Object.keys(localStorage).filter(k => k.indexOf(WORDBOOK_STORE_KEY) === 0);
+  keys.forEach(k => localStorage.removeItem(k));
+  invalidateWordbookCache();
+  if (typeof renderWordbookManager === 'function' &&
+      document.getElementById('wordbook-manager').classList.contains('active')) {
+    renderWordbookManager();
+  }
+  showStorageUsage();
+  alert('已清理 ' + keys.length + ' 份词库缓存');
+}
+
+async function forceAppUpdate() {
+  if (!confirm('将清空离线缓存并重新加载页面（学习数据不会丢失），继续吗？')) return;
+  try {
+    if (navigator.serviceWorker) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+    if (window.caches) {
+      const names = await caches.keys();
+      await Promise.all(names.map(n => caches.delete(n)));
+    }
+  } catch (e) {}
+  location.reload(true);
 }
 
 function showStorageUsage() {
