@@ -349,6 +349,13 @@
 .progress-bar-master { position: absolute; left: 0; top: 0; height: 100%; background: var(--text-main); border-radius: 6px; transition: width 0.4s ease; }
 .progress-stats { display: flex; justify-content: space-between; margin-top: 12px; font-size: 12px; color: var(--text-muted); gap: 6px; flex-wrap: wrap; }
 .wb-lang-tag { display: inline-block; margin-left: 6px; padding: 1px 6px; font-size: 11px; font-weight: 400; color: var(--text-muted); background: #F3F4F6; border-radius: 6px; vertical-align: middle; }
+.speak-btn { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: none; border-radius: 50%; background: #F3F4F6; color: var(--text-main); cursor: pointer; flex-shrink: 0; transition: transform 0.15s ease, background 0.2s ease; padding: 0; }
+.speak-btn:active { transform: scale(0.9); }
+.speak-btn.speaking { background: var(--text-main); color: #fff; animation: speakPulse 0.9s ease-in-out infinite; }
+@keyframes speakPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+.speak-btn-sm { width: 26px; height: 26px; background: transparent; color: var(--text-muted); }
+.study-word-row { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.study-example-row { display: flex; align-items: flex-start; justify-content: center; gap: 6px; }
 .spelling-hint-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
 .spelling-msg { font-size: 12px; color: var(--text-muted); min-height: 16px; }
 .spelling-reveal-btn { font-size: 12px; color: var(--text-muted); background: #F3F4F6; border: none; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
@@ -2516,7 +2523,15 @@ body.theme-glass .chat-messages {
 
     <!-- 单词卡片 -->
     <div class="study-card" id="study-card" onclick="tapStudyCard()">
-    <div class="study-word" id="study-word" onclick="speakWord(this.textContent)" style="cursor:pointer;" title="点击朗读">---</div>
+    <div class="study-word-row">
+      <div class="study-word" id="study-word" onclick="speakCurrentWord(event)" style="cursor:pointer;" title="点击朗读">---</div>
+      <button type="button" class="speak-btn" id="study-speak-btn" onclick="speakCurrentWord(event)" title="朗读单词" aria-label="朗读单词">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H3v6h3l5 4V5z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>
+        </svg>
+      </button>
+    </div>
 
       <div class="study-phonetic" id="study-phonetic"></div>
       <div class="study-pos" id="study-pos"></div>
@@ -2533,7 +2548,16 @@ body.theme-glass .chat-messages {
         </div>
     </div>
 
-      <div class="study-example" id="study-example"></div>
+      <div class="study-example-row">
+        <div class="study-example" id="study-example"></div>
+        <button type="button" class="speak-btn speak-btn-sm" id="study-example-speak" onclick="speakCurrentExample(event)"
+                style="display:none;" title="朗读例句" aria-label="朗读例句">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H3v6h3l5 4V5z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.5 8.5a5 5 0 0 1 0 7"/>
+          </svg>
+        </button>
+      </div>
       <div class="study-tap-hint">点击卡片翻转</div>
     </div>
 
@@ -3835,7 +3859,11 @@ if (!DB.get('userProfiles')) DB.set('userProfiles', []);
       learnLang: 'en',
       nativeLang: 'zh',
       translationEnabled: false,
-      translationDefaultOpen: false
+      translationDefaultOpen: false,
+      voiceSource: 'auto',
+      voiceAccent: 'us',
+      voiceRate: 0.9,
+      autoSpeak: false
     });
   } else {
     const s = DB.get('appSettings');
@@ -3853,6 +3881,10 @@ if (!s.hasOwnProperty('showStudyMsgsInHistory')) {
     if (!s.hasOwnProperty('nativeLang'))       { s.nativeLang = 'zh'; changed = true; }
     if (!s.hasOwnProperty('translationEnabled'))     { s.translationEnabled = false; changed = true; }
     if (!s.hasOwnProperty('translationDefaultOpen')) { s.translationDefaultOpen = false; changed = true; }
+    if (!s.hasOwnProperty('voiceSource'))      { s.voiceSource = 'auto'; changed = true; }
+    if (!s.hasOwnProperty('voiceAccent'))      { s.voiceAccent = 'us'; changed = true; }
+    if (!s.hasOwnProperty('voiceRate'))        { s.voiceRate = 0.9; changed = true; }
+    if (!s.hasOwnProperty('autoSpeak'))        { s.autoSpeak = false; changed = true; }
     if (!s.hasOwnProperty('activeChatCss'))    { s.activeChatCss = ''; changed = true; }
     if (!s.hasOwnProperty('activeGlobalCss'))  { s.activeGlobalCss = ''; changed = true; }
     if (changed) DB.set('appSettings', s);
@@ -5506,6 +5538,14 @@ function renderWordList() {
           <div class="word-row-translation">${w.pos ? `<span style="color:var(--text-muted);margin-right:4px;">${w.pos}</span>` : ''}${escapeHtml(w.translation)}</div>
         </div>
         ${meta ? `<div style="font-size:11px;color:var(--text-muted);white-space:nowrap;margin-left:8px;">${meta}</div>` : ''}
+        <button type="button" class="speak-btn speak-btn-sm wordlist-speak" style="margin-left:6px;"
+                data-word="${escapeHtml(w.word)}" data-lang="${escapeHtml(currentViewWordbook.lang || 'en')}"
+                title="朗读" aria-label="朗读">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H3v6h3l5 4V5z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.5 8.5a5 5 0 0 1 0 7"/>
+          </svg>
+        </button>
       </div>
     `;
   }).join('');
@@ -5517,6 +5557,15 @@ function formatDueIn(ts) {
   if (days === 1) return '明天复习';
   return days + ' 天后复习';
 }
+
+// 词表朗读：事件委托，避免把词形拼进内联属性
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest && e.target.closest('.wordlist-speak');
+  if (!btn) return;
+  e.stopPropagation();
+  e.preventDefault();
+  playWordAudio(btn.dataset.word, btn.dataset.lang, btn);
+});
 
 function filterWordList() { renderWordList(); }
 
@@ -5741,6 +5790,19 @@ function showCard(w, isReview) {
     cardEl.appendChild(dotsEl);
   }
   dotsEl.innerHTML = renderDotsHTML(dots, studyWordRequired[w.id] || 3);
+
+  const exBtn = document.getElementById('study-example-speak');
+  if (exBtn) exBtn.style.display = w.example ? 'inline-flex' : 'none';
+
+  // 自动发音（设置里开启后，出词即读）
+  if (getVoiceSettings().autoSpeak) {
+    setTimeout(() => {
+      const cur = document.getElementById('study-card');
+      if (cur && cur.dataset.word && JSON.parse(cur.dataset.word).id === w.id) {
+        playWordAudio(w.word, getWordLang(w), document.getElementById('study-speak-btn'), { silent: true });
+      }
+    }, 220);
+  }
 
   resetSpellingArea();
   document.getElementById('study-btns-know').style.display = 'none';
@@ -10960,21 +11022,236 @@ function detectTextLang(text) {
   return null;
 }
 
-function speakWord(word, langCode) {
-  if (!word || word === '---') return;
-  if (!window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
+// ============================================================
+//  语音库：在线真人/引擎发音 + 系统合成兜底
+//  很多环境（iOS PWA、部分安卓 WebView、内置浏览器）没有可用的
+//  SpeechSynthesis 引擎，只靠 TTS 会完全没有声音，所以这里优先用音频源。
+// ============================================================
 
-  const lang = langCode || detectTextLang(word) || getLearnLang();
-  const speechLang = getLangSpeech(lang);
-  const utter = new SpeechSynthesisUtterance(String(word).trim());
-  utter.lang = speechLang;
-  utter.rate = 0.82;
-  const voices = window.speechSynthesis.getVoices() || [];
-  const prefix = speechLang.split('-')[0];
-  const preferred = voices.find(v => v.lang === speechLang) || voices.find(v => v.lang.indexOf(prefix) === 0);
-  if (preferred) utter.voice = preferred;
-  window.speechSynthesis.speak(utter);
+// 有道词典发音的语言代码（英语不带 le，用 type 区分英美音）
+const YOUDAO_LE = { ja: 'jap', ko: 'ko', fr: 'fr', de: 'de', es: 'es', it: 'it', ru: 'ru', pt: 'pt', zh: 'zh' };
+// Google 翻译发音的语言代码
+const GTTS_LANG = { en: 'en', ja: 'ja', ko: 'ko', fr: 'fr', es: 'es', de: 'de', it: 'it', ru: 'ru', pt: 'pt', zh: 'zh-CN' };
+
+const VOICE_SOURCES = {
+  youdao: {
+    name: '有道词典发音',
+    build(word, lang, accent) {
+      const q = encodeURIComponent(word);
+      if (lang === 'en') return 'https://dict.youdao.com/dictvoice?audio=' + q + '&type=' + (accent === 'uk' ? '1' : '2');
+      const le = YOUDAO_LE[lang];
+      return le ? 'https://dict.youdao.com/dictvoice?audio=' + q + '&le=' + le : null;
+    }
+  },
+  google: {
+    name: 'Google 翻译发音',
+    build(word, lang) {
+      const tl = GTTS_LANG[lang];
+      if (!tl) return null;
+      return 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=' + tl + '&q=' + encodeURIComponent(word);
+    }
+  }
+};
+
+function getVoiceSettings() {
+  const s = DB.get('appSettings') || {};
+  return {
+    source: s.voiceSource || 'auto',      // auto | youdao | google | tts
+    accent: s.voiceAccent || 'us',        // us | uk（仅英语）
+    rate: typeof s.voiceRate === 'number' ? s.voiceRate : 0.9,
+    autoSpeak: s.autoSpeak === true
+  };
+}
+
+// 记住某个语言上一次成功的音频源，避免每次都从失败的源重试
+const _voiceSourceHint = {};
+let _currentAudio = null;
+let _voiceToastAt = 0;
+
+function stopCurrentAudio() {
+  if (_currentAudio) {
+    try { _currentAudio.pause(); } catch (e) {}
+    _currentAudio = null;
+  }
+  if (window.speechSynthesis) { try { window.speechSynthesis.cancel(); } catch (e) {} }
+}
+
+// 尝试播放一个音频地址；成功开始播放返回 true，出错或超时返回 false
+function tryPlayAudioUrl(url, rate) {
+  return new Promise(resolve => {
+    let settled = false;
+    const audio = new Audio();
+    audio.preload = 'auto';
+    const finish = ok => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      audio.removeEventListener('playing', onPlaying);
+      audio.removeEventListener('error', onError);
+      if (!ok) { try { audio.pause(); } catch (e) {} }
+      resolve(ok);
+    };
+    const onPlaying = () => finish(true);
+    const onError = () => finish(false);
+    audio.addEventListener('playing', onPlaying);
+    audio.addEventListener('error', onError);
+    const timer = setTimeout(() => finish(false), 4500);
+
+    audio.src = url;
+    try { audio.playbackRate = rate; } catch (e) {}
+    _currentAudio = audio;
+    const p = audio.play();
+    if (p && typeof p.catch === 'function') p.catch(() => finish(false));
+  });
+}
+
+// 系统语音合成：等待语音列表就绪，规避 cancel/speak 竞态
+function getVoicesAsync(timeout) {
+  return new Promise(resolve => {
+    const synth = window.speechSynthesis;
+    if (!synth) return resolve([]);
+    const existing = synth.getVoices();
+    if (existing && existing.length) return resolve(existing);
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      synth.removeEventListener && synth.removeEventListener('voiceschanged', finish);
+      resolve(synth.getVoices() || []);
+    };
+    if (synth.addEventListener) synth.addEventListener('voiceschanged', finish);
+    setTimeout(finish, timeout || 1200);
+  });
+}
+
+let _ttsUnlocked = false;
+// iOS / 部分浏览器要求首次 speak 发生在用户手势里，否则之后一直静音
+function unlockTTS() {
+  if (_ttsUnlocked || !window.speechSynthesis) return;
+  try {
+    const u = new SpeechSynthesisUtterance(' ');
+    u.volume = 0;
+    window.speechSynthesis.speak(u);
+    _ttsUnlocked = true;
+  } catch (e) {}
+}
+['pointerdown', 'touchstart', 'click', 'keydown'].forEach(evt => {
+  document.addEventListener(evt, unlockTTS, { once: true, passive: true });
+});
+
+async function speakWithTTS(word, lang, rate) {
+  const synth = window.speechSynthesis;
+  if (!synth) return false;
+  try {
+    synth.cancel();
+    const speechLang = getLangSpeech(lang);
+    const voices = await getVoicesAsync(1200);
+    const prefix = speechLang.split('-')[0];
+    const preferred = voices.find(v => v.lang === speechLang)
+      || voices.find(v => (v.lang || '').replace('_', '-').indexOf(prefix) === 0);
+    // 设备上完全没有该语言的语音时，直接判失败，让上层提示用户
+    if (voices.length && !preferred && prefix !== 'en') return false;
+
+    const utter = new SpeechSynthesisUtterance(String(word).trim());
+    utter.lang = speechLang;
+    utter.rate = rate;
+    // 个别引擎给出的 voice 对象赋值会抛错，不能因此让整条发音链断掉
+    if (preferred) { try { utter.voice = preferred; } catch (e) {} }
+
+    return await new Promise(resolve => {
+      let settled = false;
+      const finish = ok => { if (!settled) { settled = true; resolve(ok); } };
+      utter.onstart = () => finish(true);
+      utter.onend = () => finish(true);
+      utter.onerror = () => finish(false);
+      // cancel() 后立刻 speak 在部分 Chrome 上会被吞掉，延后一拍
+      setTimeout(() => {
+        try { synth.speak(utter); } catch (e) { finish(false); }
+      }, 30);
+      setTimeout(() => finish(false), 3000);
+    });
+  } catch (e) {
+    return false;
+  }
+}
+
+function showVoiceToast(msg) {
+  const now = Date.now();
+  if (now - _voiceToastAt < 4000) return;   // 别刷屏
+  _voiceToastAt = now;
+  if (typeof showDistractionToast === 'function') showDistractionToast(msg);
+}
+
+// 核心：按顺序尝试各个发音源
+async function playWordAudio(word, langCode, btnEl, opts) {
+  const text = String(word == null ? '' : word).trim();
+  if (!text || text === '---') return false;
+
+  const cfg = getVoiceSettings();
+  const lang = langCode || detectTextLang(text) || getLearnLang();
+  stopCurrentAudio();
+  if (btnEl) btnEl.classList.add('speaking');
+
+  let order;
+  if (cfg.source === 'tts') order = [];
+  else if (cfg.source === 'auto') {
+    const hint = _voiceSourceHint[lang];
+    order = hint ? [hint].concat(Object.keys(VOICE_SOURCES).filter(k => k !== hint))
+                 : Object.keys(VOICE_SOURCES);
+  } else order = [cfg.source];
+
+  let ok = false;
+  for (const key of order) {
+    const src = VOICE_SOURCES[key];
+    if (!src) continue;
+    const url = src.build(text, lang, cfg.accent);
+    if (!url) continue;
+    ok = await tryPlayAudioUrl(url, cfg.rate);
+    if (ok) { _voiceSourceHint[lang] = key; break; }
+  }
+
+  // 在线源都失败（离线、被墙、被拦截）时退回系统合成
+  if (!ok && cfg.source !== 'youdao' && cfg.source !== 'google') {
+    ok = await speakWithTTS(text, lang, cfg.rate);
+  }
+
+  if (btnEl) btnEl.classList.remove('speaking');
+  if (!ok && !(opts && opts.silent)) {
+    showVoiceToast('发音失败：请检查网络，或在「语言与翻译」里换一个发音源');
+  }
+  return ok;
+}
+
+// 保持旧调用方式可用（卡片、词表里的 onclick）
+function speakWord(word, langCode, btnEl) {
+  playWordAudio(word, langCode, btnEl);
+}
+
+// 点击喇叭按钮：不要连带触发卡片翻转
+function speakFromButton(e, word, langCode) {
+  if (e) { e.stopPropagation(); e.preventDefault(); }
+  const btn = e && e.currentTarget ? e.currentTarget : null;
+  playWordAudio(word, langCode, btn);
+}
+
+// 朗读当前卡片的单词 / 例句
+function speakCurrentWord(e) {
+  const cardEl = document.getElementById('study-card');
+  if (!cardEl || !cardEl.dataset.word) return;
+  const w = JSON.parse(cardEl.dataset.word);
+  speakFromButton(e, w.word, getWordLang(w));
+}
+function speakCurrentExample(e) {
+  const cardEl = document.getElementById('study-card');
+  if (!cardEl || !cardEl.dataset.word) return;
+  const w = JSON.parse(cardEl.dataset.word);
+  if (!w.example) return;
+  speakFromButton(e, w.example, getWordLang(w));
+}
+function getWordLang(w) {
+  if (!w) return getLearnLang();
+  const wb = w.wbId ? getWordbookData(w.wbId) : null;
+  return (wb && wb.lang) || detectTextLang(w.word) || getLearnLang();
 }
 
 
@@ -11173,7 +11450,44 @@ function initLangSettings() {
     nativeSel.value = s.nativeLang || 'zh';
     document.getElementById('setting-translation').value = s.translationEnabled ? 'true' : 'false';
     document.getElementById('setting-translation-open').value = s.translationDefaultOpen ? 'true' : 'false';
+
+    const v = getVoiceSettings();
+    document.getElementById('setting-voice-source').value = v.source;
+    document.getElementById('setting-voice-accent').value = v.accent;
+    document.getElementById('setting-voice-rate').value = v.rate;
+    document.getElementById('voice-rate-val').innerText = v.rate;
+    document.getElementById('setting-auto-speak').value = v.autoSpeak ? 'true' : 'false';
+    document.getElementById('voice-test-result').textContent = '';
     updateLangTip();
+}
+
+function saveVoiceSettings() {
+    const s = DB.get('appSettings') || {};
+    s.voiceSource = document.getElementById('setting-voice-source').value;
+    s.voiceAccent = document.getElementById('setting-voice-accent').value;
+    s.voiceRate = parseFloat(document.getElementById('setting-voice-rate').value) || 0.9;
+    s.autoSpeak = document.getElementById('setting-auto-speak').value === 'true';
+    DB.set('appSettings', s);
+    Object.keys(_voiceSourceHint).forEach(k => delete _voiceSourceHint[k]);   // 换源后重新探测
+}
+
+async function testVoice() {
+    const resultEl = document.getElementById('voice-test-result');
+    const lang = getLearnLang();
+    const samples = { en: 'hello', ja: 'こんにちは', ko: '안녕하세요', fr: 'bonjour', es: 'hola', de: 'hallo',
+                      it: 'ciao', ru: 'привет', pt: 'olá', zh: '你好' };
+    const word = samples[lang] || 'hello';
+    resultEl.style.color = '';
+    resultEl.textContent = '正在试听「' + word + '」…';
+    const ok = await playWordAudio(word, lang);
+    if (ok) {
+        const used = _voiceSourceHint[lang];
+        resultEl.style.color = 'var(--success)';
+        resultEl.textContent = '播放成功' + (used && VOICE_SOURCES[used] ? '（来源：' + VOICE_SOURCES[used].name + '）' : '（系统语音合成）');
+    } else {
+        resultEl.style.color = 'var(--danger)';
+        resultEl.textContent = '没有声音：请检查设备音量/静音键与网络，或换一个发音来源。';
+    }
 }
 
 function updateLangTip() {
@@ -11383,6 +11697,40 @@ buildChatSystemPrompt = function(done) {
                 <option value="false">默认折叠</option>
                 <option value="true">默认展开</option>
             </select>
+        </div>
+        <div class="form-group" style="margin-top:26px;border-top:1px solid var(--border-color);padding-top:20px;">
+            <label>发音来源</label>
+            <p class="note">优先使用在线词典发音；离线或加载失败时自动回退到系统语音合成。</p>
+            <select id="setting-voice-source" onchange="saveVoiceSettings()">
+                <option value="auto">自动（在线发音 + 系统合成兜底）</option>
+                <option value="youdao">有道词典发音</option>
+                <option value="google">Google 翻译发音</option>
+                <option value="tts">仅系统语音合成（离线可用）</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>英语口音</label>
+            <select id="setting-voice-accent" onchange="saveVoiceSettings()">
+                <option value="us">美音</option>
+                <option value="uk">英音</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>语速：<span id="voice-rate-val" class="val-display">0.9</span></label>
+            <input type="range" id="setting-voice-rate" min="0.5" max="1.3" step="0.05" value="0.9"
+                   oninput="document.getElementById('voice-rate-val').innerText=this.value" onchange="saveVoiceSettings()">
+        </div>
+        <div class="form-group">
+            <label>自动发音</label>
+            <p class="note">开启后，每次出现新单词会自动朗读一次。</p>
+            <select id="setting-auto-speak" onchange="saveVoiceSettings()">
+                <option value="false">关闭</option>
+                <option value="true">开启</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <button class="btn" style="width:100%;background:#F3F4F6;color:var(--text-main);" onclick="testVoice()">试听发音</button>
+            <p class="note" id="voice-test-result" style="margin-top:8px;min-height:18px;"></p>
         </div>
         <p class="note" id="lang-settings-tip" style="margin-top:16px;"></p>
     </div>
