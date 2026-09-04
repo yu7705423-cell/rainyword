@@ -2672,6 +2672,17 @@ body.theme-glass .chat-messages {
     </div>
 
     <div class="form-group">
+      <label>新词挑选顺序</label>
+      <p class="note">词书按词频从高到低排，一直顺着背开头全是最简单的词。换成混合或随机会更有挑战。</p>
+      <select id="setting-new-word-order" onchange="saveNewWordOrder()">
+        <option value="mixed">难易混合（推荐）</option>
+        <option value="random">完全随机</option>
+        <option value="frequency">按词频，由易到难</option>
+        <option value="reverse">倒序，先背最难的</option>
+      </select>
+    </div>
+
+    <div class="form-group">
       <label>自动朗读单词</label>
       <p class="note">开启后每出现一个新单词都会自动读一遍，不用手动点喇叭</p>
       <select id="setting-study-autospeak" onchange="saveStudyAutoSpeak()">
@@ -3928,7 +3939,8 @@ if (!DB.get('userProfiles')) DB.set('userProfiles', []);
       voiceRate: 0.9,
       autoSpeak: false,
       adaptiveSrs: true,
-      memoryFactor: 1
+      memoryFactor: 1,
+      newWordOrder: 'mixed'
     });
   } else {
     const s = DB.get('appSettings');
@@ -3951,6 +3963,7 @@ if (!s.hasOwnProperty('showStudyMsgsInHistory')) {
     if (!s.hasOwnProperty('voiceRate'))        { s.voiceRate = 0.9; changed = true; }
     if (!s.hasOwnProperty('autoSpeak'))        { s.autoSpeak = false; changed = true; }
     if (!s.hasOwnProperty('adaptiveSrs'))      { s.adaptiveSrs = true; changed = true; }
+    if (!s.hasOwnProperty('newWordOrder'))     { s.newWordOrder = 'mixed'; changed = true; }
     if (!s.hasOwnProperty('memoryFactor'))     { s.memoryFactor = 1; changed = true; }
     if (!s.hasOwnProperty('activeChatCss'))    { s.activeChatCss = ''; changed = true; }
     if (!s.hasOwnProperty('activeGlobalCss'))  { s.activeGlobalCss = ''; changed = true; }
@@ -8855,6 +8868,48 @@ function requiredRepsFor(bucket) {
   return 3;   // unseen / learning
 }
 
+// ============ 新词的挑选顺序 ============
+// 词书本身是按词频从高到低排的，一直顺着取的话开头全是最简单的词。
+// 这里给几种取法，默认「难易混合」。
+function pickNewWords(pool, n, mode) {
+  if (n <= 0 || !pool || !pool.length) return [];
+  if (mode === 'random')  return sampleRandom(pool, n);
+  if (mode === 'reverse') return pool.slice().reverse().slice(0, n);
+  if (mode === 'mixed')   return sampleMixed(pool, n);
+  return pool.slice(0, n);            // 'frequency'：老行为，由易到难
+}
+
+// 从池子里不重复地随机抽 n 个
+function sampleRandom(pool, n) {
+  const arr = pool.slice();
+  const out = [];
+  while (out.length < n && arr.length) {
+    out.push(arr.splice(Math.floor(Math.random() * arr.length), 1)[0]);
+  }
+  return out;
+}
+
+// 分层抽样：按词频把剩余生词分成常用/中等/偏难三层，每组按 45%/35%/20% 抽，
+// 这样每一组里都既有认得出的、也有真正陌生的，不会开头一直背最简单的词。
+function sampleMixed(pool, n) {
+  if (pool.length <= n) return sampleRandom(pool, n);
+  const tiers = [[0, 1 / 3, 0.45], [1 / 3, 2 / 3, 0.35], [2 / 3, 1, 0.20]];
+  const used = new Set();
+  const out = [];
+  tiers.forEach((t, idx) => {
+    const lo = Math.floor(pool.length * t[0]);
+    const hi = Math.max(lo + 1, Math.floor(pool.length * t[1]));
+    const want = idx === tiers.length - 1 ? n - out.length : Math.round(n * t[2]);
+    sampleRandom(pool.slice(lo, hi), Math.max(0, want)).forEach(w => {
+      if (!used.has(w.id)) { used.add(w.id); out.push(w); }
+    });
+  });
+  if (out.length < n) {
+    sampleRandom(pool.filter(w => !used.has(w.id)), n - out.length).forEach(w => out.push(w));
+  }
+  return out.slice(0, n);
+}
+
 // 拼写关只对拼音文字有意义，中日韩文字跳过
 function isSpellableWord(word) {
   return !!word && !/[\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af]/.test(word);
@@ -8899,7 +8954,7 @@ function startStudy(forceExtra) {
   const dailyGoal = settings.dailyGoal || 10;
   let quota = Math.max(0, Math.min(batchSize, dailyGoal - startedToday));
   if (forceExtra) quota = batchSize;
-  let newWords = unseenWords.slice(0, quota);
+  let newWords = pickNewWords(unseenWords, quota, settings.newWordOrder || 'mixed');
 
   if (reviewWords.length === 0 && learningWords.length === 0 && newWords.length === 0) {
     if (unseenWords.length > 0 && !forceExtra) {
@@ -9700,6 +9755,13 @@ function initStudySettings() {
   document.getElementById('setting-daily-goal').value = settings.dailyGoal || 10;
   document.getElementById('setting-study-autospeak').value = settings.autoSpeak ? 'true' : 'false';
   document.getElementById('setting-study-spelling').value = settings.spellingEnabled ? 'true' : 'false';
+  document.getElementById('setting-new-word-order').value = settings.newWordOrder || 'mixed';
+}
+
+function saveNewWordOrder() {
+  const s = DB.get('appSettings') || {};
+  s.newWordOrder = document.getElementById('setting-new-word-order').value;
+  DB.set('appSettings', s);
 }
 
 // 自动朗读 / 拼写关在这里改，和「语言与翻译」「专注与拼写」是同一个设置
