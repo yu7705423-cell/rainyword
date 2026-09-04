@@ -349,6 +349,10 @@
 .progress-bar-master { position: absolute; left: 0; top: 0; height: 100%; background: var(--text-main); border-radius: 6px; transition: width 0.4s ease; }
 .progress-stats { display: flex; justify-content: space-between; margin-top: 12px; font-size: 12px; color: var(--text-muted); gap: 6px; flex-wrap: wrap; }
 .wb-lang-tag { display: inline-block; margin-left: 6px; padding: 1px 6px; font-size: 11px; font-weight: 400; color: var(--text-muted); background: #F3F4F6; border-radius: 6px; vertical-align: middle; }
+.prompt-block-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--card-bg, #fff); border: 1px solid var(--border-color); border-radius: 12px; }
+.prompt-block-idx { width: 20px; height: 20px; flex-shrink: 0; border-radius: 6px; background: #F3F4F6; color: var(--text-muted); font-size: 11px; display: flex; align-items: center; justify-content: center; }
+.prompt-move-btn { width: 30px; height: 30px; flex-shrink: 0; border: none; border-radius: 8px; background: #F3F4F6; color: var(--text-main); font-size: 14px; cursor: pointer; }
+.prompt-move-btn:disabled { opacity: 0.3; cursor: default; }
 .wordlist-restore { margin-left: 6px; font-size: 11px; color: var(--text-muted); background: #F3F4F6; border: none; border-radius: 8px; padding: 4px 8px; cursor: pointer; white-space: nowrap; }
 .study-known-btn { margin-top: 14px; padding: 9px 16px; font-size: 13px; color: var(--text-muted); background: transparent; border: 1px dashed var(--border-color); border-radius: 12px; cursor: pointer; }
 .study-known-btn:active { background: #F3F4F6; }
@@ -2304,6 +2308,10 @@ body.theme-glass .chat-messages {
 </div>
 
     
+<div class="menu-item" onclick="openSubPage('prompt-order')">
+  <span>Prompt 注入顺序</span>
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+</div>
 <div class="menu-item" onclick="openSubPage('memory-curve')">
   <span>记忆曲线与算法</span>
   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
@@ -3927,7 +3935,8 @@ if (!DB.get('userProfiles')) DB.set('userProfiles', []);
       batchSize: 10,
       dailyGoal: 10,
       aiMode: 'dialogue',
-      injectOrder: ['system','character','memory','worldbook'],
+      injectOrder: ['character','worldbook','user','time','memory','seeds','vocab','sticker'],
+      vocabPromptMode: 'both',
       activeChatCss: '',
       activeGlobalCss: '',
       learnLang: 'en',
@@ -3947,7 +3956,10 @@ if (!DB.get('userProfiles')) DB.set('userProfiles', []);
     let changed = false;
     if (!s.batchSize)     { s.batchSize = 10; changed = true; }
     if (!s.dailyGoal)     { s.dailyGoal = 10; changed = true; }
-    if (!s.injectOrder)   { s.injectOrder = ['system','character','memory','worldbook']; changed = true; }
+    // 老版本存的是 ['system','character','memory','worldbook']，其中 system 不是区块，
+    // getInjectOrder() 会自动清洗，这里只在完全缺失时补默认值
+    if (!s.injectOrder)   { s.injectOrder = ['character','worldbook','user','time','memory','seeds','vocab','sticker']; changed = true; }
+    if (!s.hasOwnProperty('vocabPromptMode')) { s.vocabPromptMode = 'both'; changed = true; }
 if (!s.hasOwnProperty('showStudyMsgsInHistory')) { 
   s.showStudyMsgsInHistory = true; 
   changed = true; 
@@ -10364,44 +10376,40 @@ async function sendAIOpening() {
 }
 
 // ===== 构建 system prompt =====
-function buildChatSystemPrompt(wordsAllDone) {
-  const char = currentChatChar;
-  const worldbook = buildWorldbookContext(char.id);
-  const userCtx = getUserProfileContext();
-  const wordList = chatVocabList.map(w => `${w.word}（${w.translation}，词性：${w.pos || ''}，例句：${w.example || ''}）`).join('\n');
-  const doneList = chatVocabDone.map(w => w.word).join('、');
-const cats = DB.get('stickerCategories') || [];
-const stickerDescs = cats.flatMap(c => (c.items||[]).map(i => typeof i === 'object' ? i.desc : '').filter(Boolean));
-const stickerInstruction = stickerDescs.length > 0
-  ? '\n\n[可用表情包]\n当你想发表情时，在消息里单独一行写 [STICKER]。可用的表情描述：' + stickerDescs.join('、') + '（系统会自动随机匹配）'
-  : '';
-  let vocabInstruction = '';
-if (chatSessionType === 'casual' || chatVocabList.length === 0) {
-    vocabInstruction = '\n\n这是一次自由聊天，没有词汇学习任务。请以角色身份自然聊天，保持人设。';
-} else if (!wordsAllDone) {
-    vocabInstruction = `
-[词汇带入任务]
-以下单词需要在对话中自然带出，像真实聊天一样，可以用谐音梗、吐槽场景、段子、造句等方式，绝对不能说"今天学习XX单词"这类生硬的话：
-${wordList}
-已带出的词：${doneList || '（无）'}
-还未带出的词数量：${chatVocabList.length - chatVocabDone.length}
-规则：
-1. 每次回复尽量自然带出 1-2 个词，用【】标记，如：昨天去餐厅，菜单全是英文，点了个【appetizer】结果上来一小碟...
-2. 带出的词必须在上下文中有实际意义，不能强行插入
-3. 对话风格完全符合你的角色人设`;
-  } else {
-    vocabInstruction = `
-[词汇任务已完成]
-所有词汇已在对话中自然带出。现在可以自由聊天，偶尔自然地复习提到刚才学过的词（${doneList}），但不强制，以真实聊天为主。`;
+// 词汇带出指令：从旧版 buildChatSystemPrompt 里抽出来复用。
+// 旧版整个函数在 V2 里被覆盖且没被调用过，等于这段指令一直没送进模型。
+function buildVocabInstruction(wordsAllDone) {
+  if (chatSessionType === 'casual' || chatVocabList.length === 0) {
+    return '\n\n这是一次自由聊天，没有词汇学习任务。请以角色身份自然聊天，保持人设。';
   }
+  const doneList = chatVocabDone.map(w => w.word).join('、');
+  if (wordsAllDone) {
+    return '\n\n[词汇任务已完成]\n所有词汇已在对话中自然带出。现在可以自由聊天，'
+      + '偶尔自然地复习提到刚才学过的词（' + doneList + '），但不强制，以真实聊天为主。';
+  }
+  const remaining = chatVocabList.filter(w => !chatVocabDone.find(d => d.id === w.id));
+  const wordList = remaining
+    .map(w => `${w.word}（${w.translation}${w.pos ? '，' + w.pos : ''}）`)
+    .join('\n');
+  return '\n\n[今日词汇 · 需要自然带出]\n'
+    + '以下是今天要带出的词，像真实聊天一样融进话题里——可以用吐槽、场景、造句、谐音梗，'
+    + '绝对不要说"今天我们来学 XX 这个词"这类生硬的话：\n'
+    + wordList
+    + (doneList ? '\n已经带出的词：' + doneList : '')
+    + '\n还剩 ' + remaining.length + ' 个没带出。\n'
+    + '规则：\n'
+    + '1. 每次回复自然带出 1-2 个，用【】标记，例：昨天去餐厅菜单全英文，点了个【appetizer】结果上来一小碟…\n'
+    + '2. 带出的词必须在上下文里有实际意义，不能硬塞\n'
+    + '3. 语气完全按你的人设走，不要因为要带词就变成老师';
+}
 
-  return `${char.systemPrompt || '你是一个友好的聊天伙伴'}${worldbook}${userCtx}${stickerInstruction}${vocabInstruction}
-
-重要规则：
-- 每次回复3-20条消息，用换行符 \\n\\n 分隔每条消息
-- 消息要短，像真实微信聊天，不要长篇大论
-- 如果想发表情包，在消息中单独一行写 [STICKER] 表示你想发一个表情包（系统会自动处理）
-- 回复语言与用户保持一致`;
+// 表情包说明
+function buildStickerInstruction() {
+  const cats = DB.get('stickerCategories') || [];
+  const descs = cats.flatMap(c => (c.items || []).map(i => (typeof i === 'object' ? i.desc : '')).filter(Boolean));
+  if (!descs.length) return '';
+  return '\n\n[可用表情包]\n当你想发表情时，在消息里单独一行写 [STICKER]，'
+    + '也可以写 [STICKER:描述] 指定要发哪个。可用的表情描述：' + descs.join('、');
 }
 
 // ===== 用户发送消息 =====
@@ -12804,26 +12812,9 @@ if (action === 'chat-bg') {
   }
 };
 
-// --- 改写 buildChatSystemPrompt：注入记忆 ---
-var _originalBuildChatSystemPrompt = buildChatSystemPrompt;
-buildChatSystemPrompt = function(wordsAllDone) {
-  var base = _originalBuildChatSystemPrompt(wordsAllDone);
-
-  // 注入记忆上下文
-  if (currentChatChar) {
-    var lastUserMsg = '';
-    for (var i = chatMessages.length - 1; i >= 0; i--) {
-      if (chatMessages[i].role === 'user') {
-        lastUserMsg = chatMessages[i].content;
-        break;
-      }
-    }
-    var memoryCtx = buildMemoryContext(currentChatChar.id, lastUserMsg);
-    base += memoryCtx;
-  }
-
-  return base;
-};
+// 注：这里原本有一层"注入记忆"的 buildChatSystemPrompt 包装，
+// 但它在 V2 里被整体覆盖、从未执行过，已删除。
+// 记忆注入现在由 V2 骨架里的 memory 区块负责（见 buildChatSystemPrompt）。
 
 // --- 改写 streamAIReply：max_tokens去掉限制 + 历史轮次截断 + 缓冲区追加 + 自动总结检查 ---
 var _originalStreamAIReply = streamAIReply;
@@ -13643,88 +13634,132 @@ applyChatBg();
 // ============================================================
 //  1. 重写 buildChatSystemPrompt — 信息驱动，极简骨架
 // ============================================================
-buildChatSystemPrompt = function(wordsAllDone) {
-  var char = currentChatChar;
-  var worldbook = buildWorldbookContext(char.id);
-  var userCtx = getUserProfileContext();
-  var settings = DB.get('appSettings');
-  var profiles = DB.get('userProfiles') || [];
-  var activeProfile = profiles.find(function(p) { return p.id === settings.activeProfileId; });
-  var userName = (activeProfile && activeProfile.nickname) ? activeProfile.nickname : '用户';
-
-  // ===== 时间情境（用户可控）=====
-  var timeContext = '';
-  if (settings.injectTime !== false) {
-    var now = new Date();
-    var weekdays = ['日','一','二','三','四','五','六'];
-    var weekday = weekdays[now.getDay()];
-    var hh = String(now.getHours()).padStart(2, '0');
-    var mm = String(now.getMinutes()).padStart(2, '0');
-
-    var intervalText = '';
-    if (chatMessages.length > 0) {
-      var lastTs = null;
-      for (var i = chatMessages.length - 1; i >= 0; i--) {
-        if (chatMessages[i].ts) { lastTs = chatMessages[i].ts; break; }
+// ============ 可排序的 prompt 区块 ============
+// 每个区块产出一段文本，最终按 appSettings.injectOrder 的顺序拼起来。
+// 身份开场、风格收尾、语言/翻译规则、专注提醒是结构性的，固定位置不参与排序。
+const PROMPT_BLOCKS = {
+  character: {
+    label: '角色人设',
+    desc: '角色卡里写的设定',
+    build: () => (currentChatChar && currentChatChar.systemPrompt) || ''
+  },
+  worldbook: {
+    label: '世界书',
+    desc: '全局条目 + 挂在该角色上的条目',
+    build: () => buildWorldbookContext(currentChatChar.id)
+  },
+  user: {
+    label: '用户信息',
+    desc: '当前账号的昵称与简介',
+    build: () => getUserProfileContext()
+  },
+  time: {
+    label: '时间情境',
+    desc: '现在几点、距上次聊天多久（可在聊天设置里关）',
+    build: () => buildTimeContext()
+  },
+  memory: {
+    label: '对话记忆',
+    desc: 'S/A 级全注入，B 级按关键词命中',
+    build: () => {
+      if (!currentChatChar) return '';
+      let lastUserMsg = '';
+      for (let i = chatMessages.length - 1; i >= 0; i--) {
+        if (chatMessages[i].role === 'user') { lastUserMsg = chatMessages[i].content; break; }
       }
-      if (lastTs) {
-        var diffMin = Math.floor((Date.now() - lastTs) / 60000);
-        if (diffMin < 1) intervalText = '你们刚刚还在聊。';
-        else if (diffMin < 60) intervalText = '距离你们上次聊天过去了' + diffMin + '分钟。';
-        else if (diffMin < 1440) intervalText = '距离你们上次聊天过去了' + Math.floor(diffMin/60) + '小时。';
-        else intervalText = '距离你们上次聊天过去了' + Math.floor(diffMin/1440) + '天。';
-      }
+      return buildMemoryContext(currentChatChar.id, lastUserMsg);
     }
-    timeContext = '\n\n现在是星期' + weekday + ' ' + hh + ':' + mm + '。\n' + intervalText;
+  },
+  seeds: {
+    label: '情境种子',
+    desc: '开场前另外生成的话题线索（不含目标词）',
+    build: wordsAllDone => {
+      const mode = (DB.get('appSettings') || {}).vocabPromptMode || 'both';
+      if (mode === 'wordlist') return '';
+      if (chatSessionType === 'casual' || chatVocabList.length === 0 || wordsAllDone) return '';
+      const seeds = window._currentScenarioSeeds || [];
+      return seeds.length ? '\n\n[最近发生的事]\n' + seeds.join('\n') : '';
+    }
+  },
+  vocab: {
+    label: '今日词汇任务',
+    desc: '把今天要背的词直接给模型，并要求用【】标记带出',
+    build: wordsAllDone => {
+      const mode = (DB.get('appSettings') || {}).vocabPromptMode || 'both';
+      if (mode === 'seeds') return '';
+      return buildVocabInstruction(wordsAllDone);
+    }
+  },
+  sticker: {
+    label: '表情包说明',
+    desc: '告诉模型可以发哪些表情',
+    build: () => buildStickerInstruction()
   }
+};
 
-  // ===== 表情包 =====
-  var cats = DB.get('stickerCategories') || [];
-  var hasStickerDescs = cats.some(function(c) {
-    return (c.items || []).some(function(i) { return typeof i === 'object' && i.desc; });
+const DEFAULT_INJECT_ORDER = ['character', 'worldbook', 'user', 'time', 'memory', 'seeds', 'vocab', 'sticker'];
+
+// 读出一份干净的顺序：丢掉无效 id，补上缺失的
+function getInjectOrder() {
+  const raw = (DB.get('appSettings') || {}).injectOrder;
+  const known = Object.keys(PROMPT_BLOCKS);
+  const seen = new Set();
+  const out = [];
+  (Array.isArray(raw) ? raw : []).forEach(id => {
+    if (known.indexOf(id) >= 0 && !seen.has(id)) { seen.add(id); out.push(id); }
   });
-  var stickerLine = hasStickerDescs
-    ? '\n当你想发表情时，在消息里单独一行写 [STICKER]。'
-    : '';
+  DEFAULT_INJECT_ORDER.forEach(id => { if (!seen.has(id)) { seen.add(id); out.push(id); } });
+  return out;
+}
 
-  // ===== 情境种子（从缓存中读取，由 session 开始时生成）=====
-  var seedText = '';
-  if (chatSessionType !== 'casual' && chatVocabList.length > 0) {
-    var seedCache = window._currentScenarioSeeds || [];
-    if (!wordsAllDone && seedCache.length > 0) {
-      seedText = '\n\n[最近发生的事]\n' + seedCache.join('\n');
-    } else if (wordsAllDone) {
-      // 任务完成后不再引导
-      seedText = '';
-    }
+function buildTimeContext() {
+  const settings = DB.get('appSettings') || {};
+  if (settings.injectTime === false) return '';
+  const now = new Date();
+  const weekday = ['日','一','二','三','四','五','六'][now.getDay()];
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+
+  let intervalText = '';
+  let lastTs = null;
+  for (let i = chatMessages.length - 1; i >= 0; i--) {
+    if (chatMessages[i].ts) { lastTs = chatMessages[i].ts; break; }
   }
-
-  // ===== 记忆注入（保留原有逻辑）=====
-  var memoryCtx = '';
-  if (currentChatChar) {
-    var lastUserMsg = '';
-    for (var j = chatMessages.length - 1; j >= 0; j--) {
-      if (chatMessages[j].role === 'user') {
-        lastUserMsg = chatMessages[j].content;
-        break;
-      }
-    }
-    memoryCtx = buildMemoryContext(currentChatChar.id, lastUserMsg);
+  if (lastTs) {
+    const diffMin = Math.floor((Date.now() - lastTs) / 60000);
+    if (diffMin < 1) intervalText = '你们刚刚还在聊。';
+    else if (diffMin < 60) intervalText = '距离你们上次聊天过去了' + diffMin + '分钟。';
+    else if (diffMin < 1440) intervalText = '距离你们上次聊天过去了' + Math.floor(diffMin / 60) + '小时。';
+    else intervalText = '距离你们上次聊天过去了' + Math.floor(diffMin / 1440) + '天。';
   }
+  return '\n\n现在是星期' + weekday + ' ' + hh + ':' + mm + '。\n' + intervalText;
+}
 
-  // ===== 最终组装 =====
-  return '你不是AI助手。你不是在扮演角色。你就是' + (char.name || '对方')
-    + '，正在用手机和' + userName + '发消息。\n\n'
-    + (char.systemPrompt || '')
-    + worldbook
-    + userCtx
-    + timeContext
-    + memoryCtx
-    + seedText
-    + stickerLine
-    + '\n\n你的每次回复由1条或多条消息组成（\\n\\n分隔）。'
+buildChatSystemPrompt = function(wordsAllDone) {
+  const char = currentChatChar;
+  const settings = DB.get('appSettings') || {};
+  const profiles = DB.get('userProfiles') || [];
+  const activeProfile = profiles.find(p => p.id === settings.activeProfileId);
+  const userName = (activeProfile && activeProfile.nickname) ? activeProfile.nickname : '用户';
+
+  // 固定开场
+  let prompt = '你不是AI助手。你不是在扮演角色。你就是' + ((char && char.name) || '对方')
+    + '，正在用手机和' + userName + '发消息。\n\n';
+
+  // 可排序区块
+  getInjectOrder().forEach(id => {
+    const block = PROMPT_BLOCKS[id];
+    if (!block) return;
+    let text = '';
+    try { text = block.build(wordsAllDone) || ''; } catch (e) { text = ''; }
+    if (text) prompt += text;
+  });
+
+  // 固定收尾
+  prompt += '\n\n你的每次回复由1条或多条消息组成（\\n\\n分隔）。'
     + '\n这是手机聊天。一条消息就是一个念头。'
     + '\n你有自己的情绪和立场。你的反应忠于你这个人，不迁就对方。';
+  return prompt;
 };
 
 
@@ -15265,8 +15300,92 @@ openSubPage = function(id) {
     }
     if (id === 'lang-settings') initLangSettings();
     if (id === 'memory-curve') initMemoryCurvePage();
+    if (id === 'prompt-order') initPromptOrderPage();
     if (id === 'study-settings') initStudySettings();
 };
+
+function initPromptOrderPage() {
+    const order = getInjectOrder();
+    const listEl = document.getElementById('prompt-block-list');
+    const inChat = !!currentChatChar;
+    listEl.innerHTML = order.map((id, idx) => {
+        const b = PROMPT_BLOCKS[id];
+        let active = null;
+        if (inChat) {
+            try { active = !!b.build(chatWordsAllDone); } catch (e) { active = null; }
+        }
+        const dim = active === false ? 'opacity:0.45;' : '';
+        return `<div class="prompt-block-row" style="${dim}">
+            <span class="prompt-block-idx">${idx + 1}</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:14px;font-weight:500;">${b.label}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${b.desc}</div>
+            </div>
+            <button type="button" class="prompt-move-btn" ${idx === 0 ? 'disabled' : ''} onclick="movePromptBlock(${idx}, -1)">↑</button>
+            <button type="button" class="prompt-move-btn" ${idx === order.length - 1 ? 'disabled' : ''} onclick="movePromptBlock(${idx}, 1)">↓</button>
+        </div>`;
+    }).join('');
+    document.getElementById('setting-vocab-prompt-mode').value =
+        (DB.get('appSettings') || {}).vocabPromptMode || 'both';
+}
+
+function movePromptBlock(idx, delta) {
+    const order = getInjectOrder();
+    const to = idx + delta;
+    if (to < 0 || to >= order.length) return;
+    const tmp = order[idx];
+    order[idx] = order[to];
+    order[to] = tmp;
+    const s = DB.get('appSettings') || {};
+    s.injectOrder = order;
+    DB.set('appSettings', s);
+    initPromptOrderPage();
+}
+
+function resetInjectOrder() {
+    const s = DB.get('appSettings') || {};
+    s.injectOrder = DEFAULT_INJECT_ORDER.slice();
+    DB.set('appSettings', s);
+    initPromptOrderPage();
+}
+
+function savePromptSettings() {
+    const s = DB.get('appSettings') || {};
+    s.vocabPromptMode = document.getElementById('setting-vocab-prompt-mode').value;
+    DB.set('appSettings', s);
+    initPromptOrderPage();
+}
+
+// 用当前角色（没进聊天时用第一个角色）拼一份完整 prompt 出来看
+function previewSystemPrompt() {
+    const savedChar = currentChatChar;
+    const savedList = chatVocabList;
+    const savedDone = chatVocabDone;
+    const savedType = chatSessionType;
+    let placeholder = false;
+    if (!currentChatChar) {
+        const chars = DB.get('characters') || [];
+        const settings = DB.get('appSettings') || {};
+        currentChatChar = chars.find(c => c.id === settings.activeCharId) || chars[0];
+        if (!currentChatChar) { alert('还没有角色，先在档案袋里建一个'); return; }
+        placeholder = true;
+        chatSessionType = 'study';
+        chatVocabList = [{ id: 'demo1', word: 'appetizer', translation: '开胃菜', pos: 'n.' },
+                         { id: 'demo2', word: 'reserve', translation: '预订', pos: 'v.' }];
+        chatVocabDone = [];
+    }
+    let text = '';
+    try { text = buildChatSystemPrompt(chatWordsAllDone); }
+    catch (e) { text = '生成失败：' + e.message; }
+    if (placeholder) {
+        currentChatChar = savedChar; chatVocabList = savedList;
+        chatVocabDone = savedDone; chatSessionType = savedType;
+    }
+    document.getElementById('prompt-preview').textContent = text;
+    document.getElementById('prompt-preview-meta').textContent =
+        '共 ' + text.length + ' 字' + (placeholder ? '（当前不在聊天里，用示例词汇生成）' : '（当前会话的真实内容）');
+    document.getElementById('prompt-preview-group').style.display = 'block';
+}
 
 function initMemoryCurvePage() {
     const a = analyzeForgettingCurve();
@@ -15567,6 +15686,41 @@ buildChatSystemPrompt = function(done) {
                 <option value="true">开启</option>
                 <option value="false">关闭</option>
             </select>
+        </div>
+    </div>
+</div>
+<div id="prompt-order" class="sub-page">
+    <div class="sub-page-header">
+        <span class="back-btn" onclick="closeSubPage('prompt-order')">返回</span>
+        <span class="page-title">Prompt 注入顺序</span>
+        <span style="width:44px;"></span>
+    </div>
+    <div class="sub-page-content">
+        <div class="form-group">
+            <label>区块顺序</label>
+            <p class="note">系统提示词按这个顺序从上往下拼。越靠后的内容模型越容易照做，
+               所以想强调什么就把它往下挪。灰色表示当前这轮不会产生内容。</p>
+            <div id="prompt-block-list" style="display:flex;flex-direction:column;gap:8px;margin-top:10px;"></div>
+        </div>
+        <div class="form-group">
+            <label>词汇怎么给模型</label>
+            <p class="note">「情境种子」是开场前额外生成的话题线索（刻意不含目标词）；
+               「直接给词表」会把今天要背的词连同【】标记规则一起写进提示词。</p>
+            <select id="setting-vocab-prompt-mode" onchange="savePromptSettings()">
+                <option value="both">两者都用（推荐）</option>
+                <option value="wordlist">只给词表</option>
+                <option value="seeds">只给情境种子</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <p class="note">身份开场、风格收尾、语言与翻译规则、专注提醒是结构性的，位置固定，不参与排序。</p>
+            <button class="btn" style="width:100%;background:#F3F4F6;color:var(--text-main);" onclick="previewSystemPrompt()">预览当前完整 Prompt</button>
+            <button class="btn" style="width:100%;margin-top:8px;background:#F3F4F6;color:var(--text-main);" onclick="resetInjectOrder()">恢复默认顺序</button>
+        </div>
+        <div class="form-group" id="prompt-preview-group" style="display:none;">
+            <label>预览</label>
+            <p class="note" id="prompt-preview-meta"></p>
+            <pre id="prompt-preview" style="white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.6;background:var(--bg-color);border:1px solid var(--border-color);border-radius:10px;padding:12px;max-height:420px;overflow:auto;margin-top:8px;"></pre>
         </div>
     </div>
 </div>
