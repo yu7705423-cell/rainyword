@@ -10261,18 +10261,21 @@ history.forEach(m => {
   if (m.role === 'user') {
     appendMessage('sent', m.content);
   } else if (m.role === 'assistant') {
-    const parsed = parseTranslation(m.content);
+    const parsed = parseTranslation(m.content, isTranslationOn());
     const processed = processVocabMarkers(parsed.text);
     appendMessage('received', processed.html, true);
     const trans = m.translation || parsed.translation;
     if (trans) {
       attachTranslationToLastMsg(trans);
     } else if (isTranslationOn() && needsTranslation(parsed.text)) {
-      // 历史消息不自动调接口，给一个"翻译"按钮，想看再翻
-      attachTranslationToRow(lastMsgRow(), buildTranslateOnDemandBox(parsed.text, t => applyTranslationToMsg(m, t)));
+      // 缺译文的历史消息先占位，稍后一次性批量补齐并保存
+      const row = lastMsgRow();
+      attachTranslationToRow(row, buildTranslatingBox());
+      _pendingHistoryTranslations.push({ row: row, text: parsed.text, msg: m });
     }
   }
 });
+if (_pendingHistoryTranslations.length) backfillHistoryTranslations();
 
 if (history.length > 0) appendSystemMsg('—— 以上是历史记录 ——');
 chatMessages = history; // 作为上下文传给 AI
@@ -11791,7 +11794,16 @@ function openRecordViewer(id) {
 
   if (r.type === 'chat') {
     const msgs = (r.messages || []).filter(m => m.ts);
-    content.innerHTML = `
+    const untranslated = msgs.filter(m => m.role !== 'user' && !m.stickerUrl
+      && !m.translation && !parseTranslation(m.content, true).translation
+      && needsTranslation(parseTranslation(m.content, true).text)).length;
+    const batchBar = untranslated
+      ? `<div style="padding:8px 10px;background:#F7F7F7;">
+           <button type="button" class="btn" id="record-translate-all" style="width:100%;padding:10px;font-size:13px;background:#F3F4F6;color:var(--text-main);"
+                   onclick="translateWholeRecord('${id}')">一次翻译全部 ${untranslated} 条外语消息</button>
+         </div>`
+      : '';
+    content.innerHTML = batchBar + `
       <div style="padding:12px 8px;display:flex;flex-direction:column;gap:4px;background:#F7F7F7;min-height:100%;">
         ${msgs.map(m => {
           const isSent = m.role === 'user';
@@ -11813,7 +11825,7 @@ function openRecordViewer(id) {
             </div>`;
           }
 
-          const parsed = parseTranslation(m.content);
+          const parsed = parseTranslation(m.content, !isSent);
           const processed = isSent ? escapeHtml(parsed.text) : processVocabMarkers(parsed.text).html;
           const trans = m.translation || parsed.translation;
           const transHtml = trans
@@ -11851,7 +11863,33 @@ function openRecordViewer(id) {
   openSubPage('record-viewer');
 }
 
-// 记录回看里点"翻译"
+// 记录回看：整段一次翻完，结果写回记录，之后打开就直接有译文
+async function translateWholeRecord(recordId) {
+  const btn = document.getElementById('record-translate-all');
+  const records = DB.get('companionRecords') || [];
+  const r = records.find(x => x.id === recordId);
+  if (!r || !Array.isArray(r.messages)) return;
+
+  const targets = [];
+  r.messages.forEach(m => {
+    if (m.role === 'user' || m.stickerUrl || m.translation) return;
+    const parsed = parseTranslation(m.content, true);
+    if (parsed.translation) { m.translation = parsed.translation; return; }
+    if (needsTranslation(parsed.text)) targets.push({ msg: m, text: parsed.text });
+  });
+  if (!targets.length) { DB.set('companionRecords', records); openRecordViewer(recordId); return; }
+  if (!getApiPreset()) { alert('还没有配置 API，无法翻译'); return; }
+
+  if (btn) { btn.disabled = true; btn.textContent = '翻译中…（共 ' + targets.length + ' 条）'; }
+  const results = await requestTranslationBatch(targets.map(t => t.text));
+  let done = 0;
+  targets.forEach((t, i) => { if (results[i]) { t.msg.translation = results[i]; done++; } });
+  DB.set('companionRecords', records);
+  openRecordViewer(recordId);
+  if (!done) alert('翻译失败，请检查 API 配置或网络');
+}
+
+// 记录回看里点单条"翻译"
 async function translateRecordMsg(btn) {
   const text = btn.dataset.translate;
   const label = btn.querySelector('.label');
@@ -13846,7 +13884,9 @@ streamAIReply = async function(messages, systemPrompt) {
       },
       body: JSON.stringify({
         model: preset.model || 'gpt-3.5-turbo',
-        messages: [{ role: 'system', content: systemPrompt }].concat(truncatedMessages),
+        messages: [{ role: 'system', content: systemPrompt }]
+          .concat(truncatedMessages)
+          .concat(translationReminderMessage() ? [translationReminderMessage()] : []),
         temperature: parseFloat(preset.temp) || 0.85
       })
     });
@@ -13886,8 +13926,8 @@ streamAIReply = async function(messages, systemPrompt) {
       if (stickerMatch) {
         sendAISticker(stickerMatch[1] || '');
       } else {
-        // 拆出正文与译文
-        var parsed = parseTranslation(part);
+        // 拆出正文与译文（标记变体和"换行直接写译文"都认）
+        var parsed = parseTranslation(part, isTranslationOn());
         if (!parsed.text) {
           // AI 把译文单独换段输出时，补挂到上一条消息上
           if (parsed.translation && attachTranslationToLastMsg(parsed.translation)) {
@@ -14189,6 +14229,14 @@ console.log('[V2] Prompt重构 + 情境种子 + 后端检测 已加载');
 // ============================================================
 const TRANS_OPEN_RE = /\[\[TR\]\]/i;
 const TRANS_RE = /\[\[TR\]\]([\s\S]*?)(?:\[\[\/TR\]\]|$)/i;
+// 模型经常把标记写歪，这些变体一律当成"已经一次性输出了译文"
+const TRANS_VARIANTS = [
+  /\[\[TR\]\]([\s\S]*?)(?:\[\[\/TR\]\]|$)/i,
+  /\[TR\]([\s\S]*?)(?:\[\/TR\]|$)/i,
+  /【(?:译|翻译|译文)】\s*([\s\S]*)$/,
+  /[（(]\s*(?:译|翻译|译文)\s*[:：]?\s*([\s\S]*?)[)）]\s*$/,
+  /^\s*(?:译文|翻译|Translation)\s*[:：]\s*([\s\S]*)$/im
+];
 
 function isTranslationOn() {
   const s = DB.get('appSettings') || {};
@@ -14196,13 +14244,51 @@ function isTranslationOn() {
 }
 
 // 把一条消息拆成 { text, translation }
-function parseTranslation(raw) {
+function parseTranslation(raw, allowHeuristic) {
   const src = String(raw == null ? '' : raw);
-  const m = src.match(TRANS_RE);
-  if (!m) return { text: src.trim(), translation: '' };
-  const text = src.slice(0, m.index).trim();
-  const translation = (m[1] || '').trim();
-  return { text: text || src.replace(TRANS_RE, '').trim(), translation: translation };
+
+  for (const re of TRANS_VARIANTS) {
+    const m = src.match(re);
+    if (!m) continue;
+    const text = src.slice(0, m.index).trim();
+    const translation = (m[1] || '').trim();
+    if (!translation) continue;
+    return { text: text || src.replace(re, '').trim(), translation: translation };
+  }
+
+  // 没有任何标记时，看看是不是"外语正文 + 母语译文"直接换行写在一起
+  if (allowHeuristic) {
+    const split = splitInlineTranslation(src);
+    if (split) return split;
+  }
+  return { text: src.trim(), translation: '' };
+}
+
+// 判断一段文本是不是基本上就是母语
+function isMostlyNative(text) {
+  const t = String(text || '').replace(/\s+/g, '');
+  if (!t) return false;
+  const count = re => (t.match(re) || []).length;
+  const native = getNativeLang();
+  if (native === 'zh') return count(/[\u4e00-\u9fff]/g) / t.length >= 0.5;
+  if (native === 'ja') return (count(/[\u3040-\u30ff]/g) + count(/[\u4e00-\u9fff]/g)) / t.length >= 0.5;
+  if (native === 'ko') return count(/[\uac00-\ud7af]/g) / t.length >= 0.5;
+  return count(/[A-Za-z\u00c0-\u024f]/g) / t.length >= 0.5;
+}
+
+// "Hello there\n你好呀" 这种：后面几行是母语、前面是外语，就按原文+译文拆开
+function splitInlineTranslation(src) {
+  const lines = String(src || '').split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length < 2) return null;
+  let i = lines.length - 1;
+  while (i > 0 && isMostlyNative(lines[i])) i--;
+  const cut = i + 1;
+  if (cut <= 0 || cut >= lines.length) return null;
+  const body = lines.slice(0, cut).join('\n');
+  const trans = lines.slice(cut).join('\n');
+  if (!needsTranslation(body)) return null;      // 正文本身就是母语，不算
+  if (!isMostlyNative(trans)) return null;
+  return { text: body, translation: trans };
 }
 
 // 去掉全部翻译片段（用于词汇检测、记忆摘要等，避免把译文当成正文）
@@ -14232,6 +14318,51 @@ function needsTranslation(text) {
 }
 
 const _translationCache = {};
+
+// 一次请求翻多条，避免历史消息一条一条地打接口
+async function requestTranslationBatch(texts) {
+  const preset = getApiPreset();
+  const out = new Array(texts.length).fill('');
+  if (!preset || !texts.length) return out;
+
+  const nativeName = getLangName(getNativeLang());
+  const CHUNK = 20;
+  for (let start = 0; start < texts.length; start += CHUNK) {
+    const chunk = texts.slice(start, start + CHUNK);
+    const numbered = chunk.map((t, i) => (i + 1) + '|' + String(t).replace(/\n+/g, ' ')).join('\n');
+    try {
+      const res = await fetch(preset.url + '/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + preset.key },
+        body: JSON.stringify({
+          model: preset.model || 'gpt-3.5-turbo',
+          temperature: 0.2,
+          messages: [
+            { role: 'system', content: '你是翻译引擎。把用户给出的每一条内容翻译成' + nativeName
+                + '。\n严格按「编号|译文」的形式每行输出一条，编号和输入完全一致，行数和输入完全一致。'
+                + '\n只输出这些行，不要输出任何解释、标题、空行或原文。' },
+            { role: 'user', content: numbered }
+          ]
+        })
+      });
+      const data = await res.json();
+      const content = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+      content.split('\n').forEach(line => {
+        const m = line.match(/^\s*(\d+)\s*[|｜:：.、]\s*(.+)$/);
+        if (!m) return;
+        const idx = parseInt(m[1], 10) - 1;
+        if (idx >= 0 && idx < chunk.length) {
+          const tr = m[2].trim().replace(/^["“「]|["”」]$/g, '').trim();
+          if (tr) {
+            out[start + idx] = tr;
+            _translationCache[chunk[idx]] = tr;
+          }
+        }
+      });
+    } catch (e) { /* 这一批失败就留空，调用方会退回按需翻译 */ }
+  }
+  return out;
+}
 
 // 让模型直接把这条消息翻成母语（AI 没按 [[TR]] 标记输出时的兜底）
 async function requestTranslation(text) {
@@ -14374,6 +14505,32 @@ function buildTranslateOnDemandBox(text, onDone) {
   return box;
 }
 
+// 历史消息缺译文时的批量补齐队列
+let _pendingHistoryTranslations = [];
+
+async function backfillHistoryTranslations() {
+  const items = _pendingHistoryTranslations.slice();
+  _pendingHistoryTranslations = [];
+  if (!items.length) return;
+  if (!getApiPreset()) {
+    // 没配 API：退回"点了再翻"的按钮
+    items.forEach(it => attachTranslationToRow(it.row,
+      buildTranslateOnDemandBox(it.text, t => applyTranslationToMsg(it.msg, t))));
+    return;
+  }
+  const results = await requestTranslationBatch(items.map(it => it.text));
+  items.forEach((it, i) => {
+    const tr = results[i];
+    if (tr) {
+      attachTranslationToRow(it.row, buildTranslationBox(tr));
+      applyTranslationToMsg(it.msg, tr);      // 写回历史，下次打开不用再翻
+    } else {
+      attachTranslationToRow(it.row,
+        buildTranslateOnDemandBox(it.text, t => applyTranslationToMsg(it.msg, t)));
+    }
+  });
+}
+
 // 收到外语消息但 AI 没给 [[TR]] 时，自己调一次翻译补上
 async function autoTranslateRow(row, text, msgRef) {
   if (!row || !text) return;
@@ -14424,19 +14581,53 @@ function toggleAllTranslations() {
 
 // ---------- 语言 / 翻译指令注入 ----------
 function buildLanguageInstruction() {
-  const s = DB.get('appSettings') || {};
   const learn = getLangName(getLearnLang());
   const native = getLangName(getNativeLang());
   if (!isTranslationOn()) {
     return '\n\n[语言] 回复语言与用户保持一致。';
   }
-  return '\n\n[语言与翻译规则 · 必须遵守]'
-    + '\n1. 你说的每一句话都必须使用' + learn + '，不要使用' + native + '（除非用户明确要求）。'
-    + '\n2. 每条消息的正文之后另起一行，用下面这个格式附上该条消息的' + native + '翻译：'
-    + '\n[[TR]]这里放' + native + '翻译[[/TR]]'
-    + '\n3. 翻译标记必须原样写成 [[TR]] 和 [[/TR]]，中间只放译文，不要加解释、不要加引号。'
-    + '\n4. 多条消息之间仍然用空行分隔，每一条消息都要各自带自己的 [[TR]]…[[/TR]]。'
-    + '\n5. 表情包消息（[STICKER]）不需要翻译。';
+  // 放在 system prompt 最后，并且写得尽量不可能被忽略：
+  // 原文和译文必须在同一次输出里一起给出。
+  return '\n\n'
+    + '════════ 输出格式（最高优先级，高于以上全部人设与风格要求）════════\n'
+    + '你正在给一个正在学' + learn + '的用户当语伴。以下两条同时成立才算合格回复：\n'
+    + '\n'
+    + '【规则一】正文一律用' + learn + '。不要用' + native + '写正文。\n'
+    + '【规则二】每一条消息都必须在正文的下一行，紧跟它自己的' + native + '译文，格式固定为：\n'
+    + '[[TR]]' + native + '译文[[/TR]]\n'
+    + '\n'
+    + '正确示例（假设学习语言是英语、母语是中文）：\n'
+    + 'Hey, did you sleep okay last night?\n'
+    + '[[TR]]嘿，你昨晚睡得还好吗？[[/TR]]\n'
+    + '\n'
+    + 'I made coffee. Want some?\n'
+    + '[[TR]]我煮了咖啡，要来一点吗？[[/TR]]\n'
+    + '\n'
+    + '错误示例（这些都算不合格，绝对不要这样输出）：\n'
+    + '× 只有' + learn + '正文，没有 [[TR]]…[[/TR]]\n'
+    + '× 把译文写在最后统一给出，而不是每条消息各自带\n'
+    + '× 把标记写成 [TR]、（翻译：…）、【译】、Translation: 等其它形式\n'
+    + '× 在 [[TR]] 里加解释、注音、括号备注或引号\n'
+    + '\n'
+    + '要点：\n'
+    + '· 原文和译文必须在同一次回复里一起输出，不要等用户追问再翻译。\n'
+    + '· 多条消息之间用空行分隔，每条消息各自带自己的 [[TR]]…[[/TR]]。\n'
+    + '· 单独一行的 [STICKER] 表情消息不需要译文。\n'
+    + '· 译文只翻这条消息本身，不要合并、不要漏译、不要多译。\n'
+    + '这个格式没有例外。缺少 [[TR]] 的回复会被系统判为无效并丢弃。\n'
+    + '════════════════════════════════════════════════';
+}
+
+// 生成前再补一条 system 提醒：越靠近生成位置，模型越不容易忘掉格式
+function translationReminderMessage() {
+  if (!isTranslationOn()) return null;
+  const learn = getLangName(getLearnLang());
+  const native = getLangName(getNativeLang());
+  return {
+    role: 'system',
+    content: '提醒：本次回复的每一条消息都必须是「' + learn + '正文 + 换行 + [[TR]]' + native
+      + '译文[[/TR]]」的形式，原文和译文一次性一起输出。没有 [[TR]] 标记的回复无效。'
+  };
 }
 
 // 包一层最终的 buildChatSystemPrompt，追加语言/翻译规则
