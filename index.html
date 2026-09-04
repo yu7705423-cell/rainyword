@@ -349,6 +349,10 @@
 .progress-bar-master { position: absolute; left: 0; top: 0; height: 100%; background: var(--text-main); border-radius: 6px; transition: width 0.4s ease; }
 .progress-stats { display: flex; justify-content: space-between; margin-top: 12px; font-size: 12px; color: var(--text-muted); gap: 6px; flex-wrap: wrap; }
 .wb-lang-tag { display: inline-block; margin-left: 6px; padding: 1px 6px; font-size: 11px; font-weight: 400; color: var(--text-muted); background: #F3F4F6; border-radius: 6px; vertical-align: middle; }
+.wordlist-restore { margin-left: 6px; font-size: 11px; color: var(--text-muted); background: #F3F4F6; border: none; border-radius: 8px; padding: 4px 8px; cursor: pointer; white-space: nowrap; }
+.study-known-btn { margin-top: 14px; padding: 9px 16px; font-size: 13px; color: var(--text-muted); background: transparent; border: 1px dashed var(--border-color); border-radius: 12px; cursor: pointer; }
+.study-known-btn:active { background: #F3F4F6; }
+.study-word.masked { letter-spacing: 8px; color: var(--text-muted); }
 .speak-btn { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: none; border-radius: 50%; background: #F3F4F6; color: var(--text-main); cursor: pointer; flex-shrink: 0; transition: transform 0.15s ease, background 0.2s ease; padding: 0; }
 .speak-btn:active { transform: scale(0.9); }
 .speak-btn.speaking { background: var(--text-main); color: #fff; animation: speakPulse 0.9s ease-in-out infinite; }
@@ -363,6 +367,8 @@
 .msg-trans-toggle { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-muted); background: rgba(0,0,0,0.04); border: none; border-radius: 8px; padding: 3px 8px; cursor: pointer; }
 .msg-trans-toggle .arrow { transition: transform 0.2s ease; display: inline-block; }
 .msg-trans-toggle.open .arrow { transform: rotate(90deg); }
+.msg-trans-pending { margin-top: 4px; }
+.msg-trans-loading { display: inline-block; font-size: 11px; color: var(--text-muted); background: rgba(0,0,0,0.04); border-radius: 8px; padding: 3px 8px; }
 .msg-trans-body { display: none; margin-top: 4px; padding: 8px 10px; font-size: 13px; line-height: 1.6; color: var(--text-muted); background: rgba(0,0,0,0.035); border-radius: 10px; white-space: pre-wrap; }
 .msg-trans-body.open { display: block; }
 .progress-stats b { color: var(--text-main); }
@@ -2298,6 +2304,10 @@ body.theme-glass .chat-messages {
 </div>
 
     
+<div class="menu-item" onclick="openSubPage('memory-curve')">
+  <span>记忆曲线与算法</span>
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+</div>
 <div class="menu-item" onclick="openSubPage('lang-settings')">
   <span>语言与翻译</span>
   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
@@ -2576,6 +2586,9 @@ body.theme-glass .chat-messages {
         认识
       </button>
     </div>
+    <button type="button" id="study-btn-known" class="study-known-btn" style="display:none;" onclick="markWordKnown()">
+      已熟识，不用再背这个词
+    </button>
 
     <!-- 选择题区域（练习模式） -->
     <div id="study-btns-quiz" class="study-quiz-area" style="display:none;">
@@ -2612,6 +2625,7 @@ body.theme-glass .chat-messages {
     <span class="wfilter" onclick="setWordFilter('reviewing', this)">复习中</span>
     <span class="wfilter" onclick="setWordFilter('mastered', this)">已掌握</span>
     <span class="wfilter" onclick="setWordFilter('due', this)">待复习</span>
+    <span class="wfilter" onclick="setWordFilter('known', this)">已熟识</span>
   </div>
   <div class="sub-page-content" style="padding:0;">
     <div id="wordlist-body" style="padding-bottom:40px;"></div>
@@ -2654,6 +2668,24 @@ body.theme-glass .chat-messages {
         <option value="20">20个</option>
         <option value="30">30个</option>
         <option value="50">50个</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>自动朗读单词</label>
+      <p class="note">开启后每出现一个新单词都会自动读一遍，不用手动点喇叭</p>
+      <select id="setting-study-autospeak" onchange="saveStudyAutoSpeak()">
+        <option value="false">关闭</option>
+        <option value="true">开启</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>拼写关</label>
+      <p class="note">开启后，一个词的识别练习全部答对之后，还要看着释义把它默写出来才算过关</p>
+      <select id="setting-study-spelling" onchange="saveStudySpelling()">
+        <option value="false">关闭</option>
+        <option value="true">开启</option>
       </select>
     </div>
 
@@ -3865,6 +3897,7 @@ if (!DB.get('storyPresets')) DB.set('storyPresets', []);
 if (!DB.get('userProfiles')) DB.set('userProfiles', []);
   if (!DB.get('wordbooks'))        DB.set('wordbooks', []);
   if (!DB.get('wordProgress'))     DB.set('wordProgress', {});
+  if (!DB.get('reviewLog'))        DB.set('reviewLog', []);
   if (!DB.get('characters'))       DB.set('characters', []);
   if (!DB.get('worldBookEntries')) DB.set('worldBookEntries', []);
   if (!DB.get('records'))          DB.set('records', []);
@@ -3893,7 +3926,9 @@ if (!DB.get('userProfiles')) DB.set('userProfiles', []);
       voiceSource: 'auto',
       voiceAccent: 'us',
       voiceRate: 0.9,
-      autoSpeak: false
+      autoSpeak: false,
+      adaptiveSrs: true,
+      memoryFactor: 1
     });
   } else {
     const s = DB.get('appSettings');
@@ -3915,6 +3950,8 @@ if (!s.hasOwnProperty('showStudyMsgsInHistory')) {
     if (!s.hasOwnProperty('voiceAccent'))      { s.voiceAccent = 'us'; changed = true; }
     if (!s.hasOwnProperty('voiceRate'))        { s.voiceRate = 0.9; changed = true; }
     if (!s.hasOwnProperty('autoSpeak'))        { s.autoSpeak = false; changed = true; }
+    if (!s.hasOwnProperty('adaptiveSrs'))      { s.adaptiveSrs = true; changed = true; }
+    if (!s.hasOwnProperty('memoryFactor'))     { s.memoryFactor = 1; changed = true; }
     if (!s.hasOwnProperty('activeChatCss'))    { s.activeChatCss = ''; changed = true; }
     if (!s.hasOwnProperty('activeGlobalCss'))  { s.activeGlobalCss = ''; changed = true; }
     if (changed) DB.set('appSettings', s);
@@ -4576,8 +4613,110 @@ let _wordbookLoading = false;
 // ============ 学习状态与统计（统一口径） ============
 const SRS_CONF = { MASTER_REPS: 4, MASTER_INTERVAL: 21, MAX_INTERVAL: 365, EF_MIN: 1.3, EF_MAX: 2.8 };
 
+// ============ 个人遗忘曲线 ============
+// 每次"到期复习"的第一次作答都会被记一条样本：{ t: 间隔天数, ok: 对错, i: 排程间隔 }。
+// 用这些样本拟合 R(t) = exp(-t / S)，再用实际保持率与目标保持率的差
+// 反过来微调排程间隔系数，让复习节奏贴合这个用户自己的遗忘速度。
+const MEM_CONF = {
+  TARGET_RETENTION: 0.90,   // 期望的按时复习正确率
+  MIN_SAMPLES: 20,          // 少于这个样本量不调整
+  WINDOW: 120,              // 只看最近这么多条样本
+  MAX_LOG: 600,
+  FACTOR_MIN: 0.6,
+  FACTOR_MAX: 2.2,
+  STEP: 0.35                // 每次调整的幅度上限系数
+};
+
+function getReviewLog() { return DB.get('reviewLog') || []; }
+
+function logReviewSample(prev, correct, now) {
+  if (!prev || prev.status !== 'review') return;
+  const last = prev.lastSeenAt || prev.learnedAt;
+  if (!last) return;
+  const elapsedDays = (now - last) / 86400000;
+  if (elapsedDays < 0.2) return;                  // 同一天内的重复不算复习样本
+  const log = getReviewLog();
+  log.push({
+    t: Math.round(elapsedDays * 100) / 100,
+    ok: correct ? 1 : 0,
+    i: prev.interval || 0,
+    ts: now
+  });
+  if (log.length > MEM_CONF.MAX_LOG) log.splice(0, log.length - MEM_CONF.MAX_LOG);
+  DB.set('reviewLog', log);
+  updateMemoryFactor(log);
+}
+
+// 排程间隔系数：记得太牢就拉长，忘得太快就缩短
+function getMemoryFactor() {
+  const s = DB.get('appSettings') || {};
+  if (s.adaptiveSrs === false) return 1;
+  const f = typeof s.memoryFactor === 'number' ? s.memoryFactor : 1;
+  return Math.min(MEM_CONF.FACTOR_MAX, Math.max(MEM_CONF.FACTOR_MIN, f));
+}
+
+function updateMemoryFactor(log) {
+  const s = DB.get('appSettings') || {};
+  if (s.adaptiveSrs === false) return;
+  const recent = (log || getReviewLog()).slice(-MEM_CONF.WINDOW);
+  if (recent.length < MEM_CONF.MIN_SAMPLES) return;
+  const observed = recent.reduce((a, r) => a + r.ok, 0) / recent.length;
+  const cur = typeof s.memoryFactor === 'number' ? s.memoryFactor : 1;
+  // observed 高于目标说明间隔偏短，可以拉长；反之缩短
+  let next = cur * (1 + MEM_CONF.STEP * (observed - MEM_CONF.TARGET_RETENTION));
+  next = Math.min(MEM_CONF.FACTOR_MAX, Math.max(MEM_CONF.FACTOR_MIN, next));
+  s.memoryFactor = Math.round(next * 1000) / 1000;
+  s.memoryObserved = Math.round(observed * 1000) / 1000;
+  DB.set('appSettings', s);
+}
+
+// 按间隔分桶统计真实记忆保持率，并拟合半衰期
+function analyzeForgettingCurve() {
+  const log = getReviewLog();
+  const bins = [
+    { lo: 0,  hi: 1,   label: '1天内' },
+    { lo: 1,  hi: 2,   label: '1-2天' },
+    { lo: 2,  hi: 4,   label: '2-4天' },
+    { lo: 4,  hi: 7,   label: '4-7天' },
+    { lo: 7,  hi: 14,  label: '1-2周' },
+    { lo: 14, hi: 30,  label: '2-4周' },
+    { lo: 30, hi: 90,  label: '1-3月' },
+    { lo: 90, hi: 1e9, label: '3月以上' }
+  ].map(b => Object.assign({ n: 0, ok: 0, sumT: 0 }, b));
+
+  log.forEach(r => {
+    const b = bins.find(x => r.t >= x.lo && r.t < x.hi);
+    if (!b) return;
+    b.n++; b.ok += r.ok; b.sumT += r.t;
+  });
+
+  // 加权最小二乘拟合 ln R = -t / S
+  let num = 0, den = 0;
+  bins.forEach(b => {
+    if (b.n < 3) return;
+    const r = Math.min(0.98, Math.max(0.02, b.ok / b.n));   // 避免 ln(0)
+    const t = b.sumT / b.n;
+    const w = b.n;
+    num += w * t * t;
+    den += w * t * Math.log(r);
+  });
+  const stability = den < 0 ? (-num / den) : null;          // 天
+
+  const total = log.length;
+  const overall = total ? log.reduce((a, r) => a + r.ok, 0) / total : null;
+  return {
+    samples: total,
+    overall: overall,
+    bins: bins.filter(b => b.n > 0),
+    stability: stability,
+    halfLife: stability ? stability * Math.LN2 : null,
+    factor: getMemoryFactor()
+  };
+}
+
 function isMasteredProgress(p) {
   if (!p) return false;
+  if (p.knownByUser) return true;
   if (p.status === 'learned' && !p.repetitions) return true;   // 兼容旧数据
   return (p.repetitions || 0) >= SRS_CONF.MASTER_REPS && (p.interval || 0) >= SRS_CONF.MASTER_INTERVAL;
 }
@@ -4586,6 +4725,8 @@ function isMasteredProgress(p) {
 function wordStatus(p, now) {
   now = now || Date.now();
   if (!p || !p.status || p.status === 'unseen') return { bucket: 'unseen', due: false };
+  // 用户标记过"已熟识"：算已掌握，永远不再排进复习队列
+  if (p.knownByUser) return { bucket: 'mastered', due: false, known: true };
   if (p.status === 'learning') return { bucket: 'learning', due: true };
   const due = !p.nextReview || p.nextReview <= now;
   return { bucket: isMasteredProgress(p) ? 'mastered' : 'reviewing', due: due };
@@ -8569,7 +8710,9 @@ function renderWordList() {
     if (keyword && !w.word.toLowerCase().includes(keyword) && !(w.translation || '').toLowerCase().includes(keyword)) return false;
     if (currentWordFilter !== 'all') {
       const s = wordStatus(progress[w.id], now);
-      if (currentWordFilter === 'due') {
+      if (currentWordFilter === 'known') {
+        if (!s.known) return false;
+      } else if (currentWordFilter === 'due') {
         if (s.bucket === 'unseen' || s.bucket === 'learning' || !s.due) return false;
       } else if (currentWordFilter === 'learned') {   // 兼容旧筛选值
         if (s.bucket !== 'mastered' && s.bucket !== 'reviewing') return false;
@@ -8589,7 +8732,8 @@ function renderWordList() {
     const dotClass = (s.bucket === 'mastered' || s.bucket === 'reviewing') ? 'dot-learned'
       : s.bucket === 'learning' ? 'dot-learning' : 'dot-unseen';
     const p = progress[w.id];
-    const meta = s.bucket === 'unseen' ? ''
+    const meta = s.known ? '已熟识'
+      : s.bucket === 'unseen' ? ''
       : s.bucket === 'learning' ? '学习中'
       : (s.bucket === 'mastered' ? '已掌握' : '复习中') + (s.due ? ' · 待复习' : (p && p.nextReview ? ' · ' + formatDueIn(p.nextReview) : ''));
 
@@ -8602,6 +8746,7 @@ function renderWordList() {
           <div class="word-row-translation">${w.pos ? `<span style="color:var(--text-muted);margin-right:4px;">${w.pos}</span>` : ''}${escapeHtml(w.translation)}</div>
         </div>
         ${meta ? `<div style="font-size:11px;color:var(--text-muted);white-space:nowrap;margin-left:8px;">${meta}</div>` : ''}
+        ${s.known ? `<button type="button" class="wordlist-restore" data-id="${escapeHtml(w.id)}" title="恢复学习">恢复</button>` : ''}
         <button type="button" class="speak-btn speak-btn-sm wordlist-speak" style="margin-left:6px;"
                 data-word="${escapeHtml(w.word)}" data-lang="${escapeHtml(currentViewWordbook.lang || 'en')}"
                 title="朗读" aria-label="朗读">
@@ -8624,11 +8769,29 @@ function formatDueIn(ts) {
 
 // 词表朗读：事件委托，避免把词形拼进内联属性
 document.addEventListener('click', function(e) {
-  const btn = e.target.closest && e.target.closest('.wordlist-speak');
-  if (!btn) return;
-  e.stopPropagation();
-  e.preventDefault();
-  playWordAudio(btn.dataset.word, btn.dataset.lang, btn);
+  if (!e.target.closest) return;
+  const speak = e.target.closest('.wordlist-speak');
+  if (speak) {
+    e.stopPropagation();
+    e.preventDefault();
+    playWordAudio(speak.dataset.word, speak.dataset.lang, speak);
+    return;
+  }
+  const restore = e.target.closest('.wordlist-restore');
+  if (restore) {
+    e.stopPropagation();
+    e.preventDefault();
+    const progress = DB.get('wordProgress') || {};
+    const p = progress[restore.dataset.id];
+    if (p) {
+      delete p.knownByUser;
+      p.nextReview = Date.now();
+      DB.set('wordProgress', progress);
+      renderWordList();
+      _lastWordsTabWbId = null;
+      initWordsTab();
+    }
+  }
 });
 
 function filterWordList() { renderWordList(); }
@@ -8646,7 +8809,9 @@ let studyIndex = 0;
 let studySessionWords = [];
 let spellingState = { active: false, target: '', raw: '', missed: false, solved: false };
 let studyWordProgress = {}; // 每个词本轮答对次数
-let studyWordRequired = {}; // 每个词本轮需要答对的次数
+let studyWordRequired = {}; // 每个词本轮需要答对的次数（识别环节）
+let studyWordSpell = {};    // 本轮该词是否还要过拼写关
+let studyWordSpellDone = {};// 拼写关是否已通过
 let studySessionWrong = {}; // 本轮是否答错过（影响 SRS 质量分）
 let studyTotalCount = 0;    // 原始总数（不变）
 let studyDoneCount = 0;     // 已完成数
@@ -8675,6 +8840,8 @@ function srsUpdate(p, quality) {
     ef = ef - 0.2;
   }
   ef = Math.min(SRS_CONF.EF_MAX, Math.max(SRS_CONF.EF_MIN, ef));
+  // 按这个用户自己的遗忘速度缩放（第 1 次复习仍固定在第二天）
+  if (reps >= 2) interval = Math.round(interval * getMemoryFactor());
   interval = Math.min(SRS_CONF.MAX_INTERVAL, Math.max(1, interval));
   return { interval: interval, easeFactor: Math.round(ef * 100) / 100, repetitions: reps, lapses: lapses };
 }
@@ -8686,6 +8853,21 @@ function requiredRepsFor(bucket) {
   if (bucket === 'mastered') return 1;
   if (bucket === 'reviewing') return 2;
   return 3;   // unseen / learning
+}
+
+// 拼写关只对拼音文字有意义，中日韩文字跳过
+function isSpellableWord(word) {
+  return !!word && !/[\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af]/.test(word);
+}
+
+// 本轮这个词还要不要过拼写关
+function spellPending(id) {
+  return !!studyWordSpell[id] && !studyWordSpellDone[id];
+}
+
+// 卡片上的总关卡数（识别 N 次 + 可能的 1 次拼写）
+function totalStagesFor(id) {
+  return (studyWordRequired[id] || 3) + (studyWordSpell[id] ? 1 : 0);
 }
 
 function startStudy(forceExtra) {
@@ -8738,10 +8920,16 @@ function startStudy(forceExtra) {
   // 初始化每个词本轮所需的答对次数
   studyWordProgress = {};
   studyWordRequired = {};
+  studyWordSpell = {};
+  studyWordSpellDone = {};
   studySessionWrong = {};
+  const spellingOn = !!settings.spellingEnabled;
   studyQueue.forEach(w => {
     studyWordProgress[w.id] = 0;
     studyWordRequired[w.id] = requiredRepsFor(wordStatus(progress[w.id], now).bucket);
+    // 拼写作为识别环节之后的最后一关
+    studyWordSpell[w.id] = spellingOn && isSpellableWord(w.word);
+    studyWordSpellDone[w.id] = false;
   });
 
   studyTotalCount = studyQueue.length;
@@ -8776,16 +8964,23 @@ function showCurrentWord() {
   const bucket = wordStatus(p).bucket;
   const isReview = bucket === 'reviewing' || bucket === 'mastered';
   const required = studyWordRequired[w.id] || 3;
+  const total = totalStagesFor(w.id);
 
   if (dots === 0) {
     // 第一次见：翻卡模式
     document.getElementById('study-mode-label').textContent =
       bucket === 'mastered' ? '巩固' : (isReview ? '复习' : '新学');
     showCard(w, isReview);
-  } else {
-    // 已经见过：出选择题
-    document.getElementById('study-mode-label').textContent = `练习 ${renderDotsText(dots, required)}`;
+  } else if (dots < required) {
+    // 中间环节：出选择题
+    document.getElementById('study-mode-label').textContent = `练习 ${renderDotsText(dots, total)}`;
     showQuiz(w, isReview);
+  } else if (spellPending(w.id)) {
+    // 识别环节全部答对之后，最后一关是拼写
+    document.getElementById('study-mode-label').textContent = `拼写 ${renderDotsText(dots, total)}`;
+    showSpellingStage(w);
+  } else {
+    showQuiz(w, isReview);   // 兜底，正常不会走到
   }
 }
 
@@ -8853,7 +9048,7 @@ function showCard(w, isReview) {
     dotsEl.style.cssText = 'position:absolute;top:12px;right:16px;display:flex;gap:4px;';
     cardEl.appendChild(dotsEl);
   }
-  dotsEl.innerHTML = renderDotsHTML(dots, studyWordRequired[w.id] || 3);
+  dotsEl.innerHTML = renderDotsHTML(dots, totalStagesFor(w.id));
 
   // 例句喇叭要等翻卡之后再出现，否则没看到例句就能点着听
   const exBtn = document.getElementById('study-example-speak');
@@ -8870,9 +9065,98 @@ function showCard(w, isReview) {
   }
 
   resetSpellingArea();
+  document.getElementById('study-word').classList.remove('masked');
+  const speakBtn = document.getElementById('study-speak-btn');
+  if (speakBtn) speakBtn.style.display = '';
   document.getElementById('study-btns-know').style.display = 'none';
   document.getElementById('study-btns-quiz').style.display = 'none';
+  setKnownBtnVisible(dots === 0);
   cardEl.style.display = 'flex';
+}
+
+function setKnownBtnVisible(visible) {
+  const el = document.getElementById('study-btn-known');
+  if (el) el.style.display = visible ? 'block' : 'none';
+}
+
+// ============ 已熟识：直接标记为已掌握，之后不再出现 ============
+function markWordKnown() {
+  const cardEl = document.getElementById('study-card');
+  if (!cardEl.dataset.word) return;
+  const w = JSON.parse(cardEl.dataset.word);
+  if (!studyCurrentList.length || studyCurrentList[0].id !== w.id) return;
+
+  const progress = DB.get('wordProgress') || {};
+  const prev = progress[w.id] || {};
+  const now = Date.now();
+  const interval = Math.max(SRS_CONF.MASTER_INTERVAL * 3, 60);
+  progress[w.id] = Object.assign({}, prev, {
+    status: 'review',
+    knownByUser: true,
+    repetitions: Math.max(prev.repetitions || 0, SRS_CONF.MASTER_REPS),
+    interval: interval,
+    easeFactor: Math.max(prev.easeFactor || 2.5, 2.6),
+    nextReview: now + interval * 24 * 60 * 60 * 1000,
+    firstLearnedAt: prev.firstLearnedAt || now,
+    learnedAt: now,
+    lastSeenAt: now
+  });
+  DB.set('wordProgress', progress);
+
+  studyWordSpellDone[w.id] = true;
+  if (!studySessionWords.find(x => x.id === w.id)) studySessionWords.push(w);
+  studyDoneCount++;
+  studyCurrentList.shift();
+  setKnownBtnVisible(false);
+  showCurrentWord();
+}
+
+// 拼写关：卡片只给释义，单词遮住，让用户默写
+function showSpellingStage(w) {
+  const cardEl = document.getElementById('study-card');
+  const dots = studyWordProgress[w.id] || 0;
+
+  document.getElementById('study-btns-quiz').style.display = 'none';
+  cardEl.style.display = 'flex';
+  cardEl.dataset.word = JSON.stringify(w);
+  cardEl.dataset.revealed = 'true';
+  cardEl.classList.add('card-revealed');
+
+  // 遮住单词本身，其余信息照常给
+  const wordEl = document.getElementById('study-word');
+  wordEl.textContent = '_'.repeat(Math.min(w.word.length, 14));
+  wordEl.classList.add('masked');
+  document.getElementById('study-phonetic').textContent = w.phonetic || '';
+  document.getElementById('study-pos').textContent = w.pos || '';
+  const translationEl = document.getElementById('study-translation');
+  translationEl.style.transition = 'none';
+  translationEl.style.opacity = '1';
+  translationEl.style.transform = 'none';
+  translationEl.textContent = w.translation || '';
+  // 例句里通常含有答案，拼写关先藏起来
+  document.getElementById('study-example').textContent = '';
+  hideExampleSpeakBtn();
+  const speakBtn = document.getElementById('study-speak-btn');
+  if (speakBtn) speakBtn.style.display = 'none';
+
+  let dotsEl = cardEl.querySelector('.study-dots');
+  if (dotsEl) dotsEl.innerHTML = renderDotsHTML(dots, totalStagesFor(w.id));
+
+  document.getElementById('study-btns-know').style.display = 'none';
+  setKnownBtnVisible(false);
+  startSpellingFor(w.word, 'stage');
+}
+
+// 拼写关结束（拼对 / 看了答案）
+function finishSpellingStage(ok) {
+  const cardEl = document.getElementById('study-card');
+  if (!cardEl.dataset.word) return;
+  const w = JSON.parse(cardEl.dataset.word);
+  setTimeout(() => {
+    document.getElementById('study-word').classList.remove('masked');
+    gradeStudyWord(w, ok, 'spelling');
+    showCurrentWord();
+  }, ok ? 650 : 900);
 }
 
 function tapStudyCard() {
@@ -8893,22 +9177,34 @@ function tapStudyCard() {
 
 // ============ 统一评分：翻卡与选择题共用 ============
 // 返回 true 表示该词本轮已过关
-function gradeStudyWord(w, correct) {
-  // 拼写模式下拼错或看了答案，本轮记为出过错，影响 SRS 质量分
-  if (spellingState && spellingState.raw && normalizeSpelling(spellingState.raw) === normalizeSpelling(w.word)) {
-    if (spellingState.missed) studySessionWrong[w.id] = true;
-  }
+function gradeStudyWord(w, correct, stage) {
+  stage = stage || 'recall';
   const progress = DB.get('wordProgress') || {};
   const prev = progress[w.id] || {};
   const now = Date.now();
   const required = studyWordRequired[w.id] || 3;
+
+  // 这个词今天第一次作答，且上次是排程复习：记入个人遗忘曲线样本
+  if (stage === 'recall' && (studyWordProgress[w.id] || 0) === 0) {
+    logReviewSample(prev, correct, now);
+  }
 
   const p = Object.assign({}, prev);
   p.firstLearnedAt = prev.firstLearnedAt || now;
   p.lastSeenAt = now;
   p.seenCount = (prev.seenCount || 0) + 1;
 
-  if (correct) {
+  if (stage === 'spelling') {
+    if (correct) {
+      studyWordSpellDone[w.id] = true;
+      p.spellCorrect = (prev.spellCorrect || 0) + 1;
+    } else {
+      p.spellWrong = (prev.spellWrong || 0) + 1;
+      studySessionWrong[w.id] = true;
+      // 拼错就退回一次识别练习，再来一遍拼写
+      studyWordProgress[w.id] = Math.max(0, (studyWordProgress[w.id] || 0) - 1);
+    }
+  } else if (correct) {
     p.correctCount = (prev.correctCount || 0) + 1;
     studyWordProgress[w.id] = (studyWordProgress[w.id] || 0) + 1;
   } else {
@@ -8918,7 +9214,7 @@ function gradeStudyWord(w, correct) {
     studyWordProgress[w.id] = Math.max(0, (studyWordProgress[w.id] || 0) - 1);
   }
 
-  const passed = correct && studyWordProgress[w.id] >= required;
+  const passed = correct && studyWordProgress[w.id] >= required && !spellPending(w.id);
 
   if (passed) {
     // 本轮全对给 5 分，中途错过给 3 分；复习时答错过则按遗忘处理
@@ -9000,18 +9296,18 @@ function showQuiz(w, isReview) {
   currentQuizWord = w;
 
   const dots = studyWordProgress[w.id] || 0;
-  const required = studyWordRequired[w.id] || 3;
-  document.getElementById('study-mode-label').textContent = `练习 ${renderDotsText(dots, required)}`;
+  document.getElementById('study-mode-label').textContent = `练习 ${renderDotsText(dots, totalStagesFor(w.id))}`;
 
   // 隐藏卡片，显示选择题区域
   document.getElementById('study-card').style.display = 'none';
   document.getElementById('study-btns-know').style.display = 'none';
   resetSpellingArea();
   hideExampleSpeakBtn();
+  setKnownBtnVisible(false);
 
   document.getElementById('quiz-question').innerHTML = `
     <div style="margin-bottom:4px;">${escapeHtml(question)}</div>
-    <div style="margin-top:8px;">${renderDotsHTML(dots, required)}</div>
+    <div style="margin-top:8px;">${renderDotsHTML(dots, totalStagesFor(w.id))}</div>
   `;
 
   document.getElementById('quiz-options').innerHTML = options.map((o, i) => `
@@ -9074,6 +9370,7 @@ function _finishMasteredCount() {
 function finishStudy() {
   resetSpellingArea();
   hideExampleSpeakBtn();
+  setKnownBtnVisible(false);
   document.getElementById('study-progress-text').textContent = '完成';
   document.getElementById('study-progress-bar').style.width = '100%';
   document.getElementById('study-mode-label').textContent = '完成';
@@ -9108,6 +9405,7 @@ function finishStudy() {
 
 function exitStudy() {
   resetSpellingArea();
+  setKnownBtnVisible(false);
   closeSubPage('study-page');
   initWordsTab();
 }
@@ -9400,6 +9698,26 @@ function initStudySettings() {
   const settings = DB.get('appSettings');
   document.getElementById('setting-batch-size').value = settings.batchSize || 10;
   document.getElementById('setting-daily-goal').value = settings.dailyGoal || 10;
+  document.getElementById('setting-study-autospeak').value = settings.autoSpeak ? 'true' : 'false';
+  document.getElementById('setting-study-spelling').value = settings.spellingEnabled ? 'true' : 'false';
+}
+
+// 自动朗读 / 拼写关在这里改，和「语言与翻译」「专注与拼写」是同一个设置
+function saveStudyAutoSpeak() {
+  const s = DB.get('appSettings') || {};
+  s.autoSpeak = document.getElementById('setting-study-autospeak').value === 'true';
+  DB.set('appSettings', s);
+  const other = document.getElementById('setting-auto-speak');
+  if (other) other.value = s.autoSpeak ? 'true' : 'false';
+}
+
+function saveStudySpelling() {
+  const s = DB.get('appSettings') || {};
+  s.spellingEnabled = document.getElementById('setting-study-spelling').value === 'true';
+  DB.set('appSettings', s);
+  const other = document.getElementById('setting-spelling');
+  if (other) other.value = s.spellingEnabled ? 'true' : 'false';
+  if (!s.spellingEnabled) resetSpellingArea();
 }
 
 function setPlanMode(mode) {
@@ -9947,7 +10265,12 @@ history.forEach(m => {
     const processed = processVocabMarkers(parsed.text);
     appendMessage('received', processed.html, true);
     const trans = m.translation || parsed.translation;
-    if (trans) attachTranslationToLastMsg(trans);
+    if (trans) {
+      attachTranslationToLastMsg(trans);
+    } else if (isTranslationOn() && needsTranslation(parsed.text)) {
+      // 历史消息不自动调接口，给一个"翻译"按钮，想看再翻
+      attachTranslationToRow(lastMsgRow(), buildTranslateOnDemandBox(parsed.text, t => applyTranslationToMsg(m, t)));
+    }
   }
 });
 
@@ -11498,7 +11821,12 @@ function openRecordViewer(id) {
                  <button type="button" class="msg-trans-toggle" onclick="toggleTranslationBox(this)"><span class="arrow">▸</span><span class="label">显示翻译</span></button>
                  <div class="msg-trans-body">${escapeHtml(trans)}</div>
                </div>`
-            : '';
+            : (!isSent && needsTranslation(parsed.text)
+                ? `<div class="msg-translation">
+                     <button type="button" class="msg-trans-toggle" data-translate="${escapeHtml(parsed.text)}"
+                             onclick="translateRecordMsg(this)"><span class="arrow">▸</span><span class="label">翻译</span></button>
+                   </div>`
+                : '');
           return `<div class="msg-row ${isSent ? 'sent' : 'received'}" style="margin-bottom:4px;">
             <div class="msg-avatar">${avatarHtml}</div>
             <div style="display:flex;flex-direction:column;max-width:72%;">
@@ -11521,6 +11849,26 @@ function openRecordViewer(id) {
   }
 
   openSubPage('record-viewer');
+}
+
+// 记录回看里点"翻译"
+async function translateRecordMsg(btn) {
+  const text = btn.dataset.translate;
+  const label = btn.querySelector('.label');
+  if (!text) return;
+  label.textContent = '翻译中…';
+  btn.disabled = true;
+  const tr = await requestTranslation(text);
+  if (!tr) { label.textContent = '翻译失败，点我重试'; btn.disabled = false; return; }
+  const box = btn.parentElement;
+  const body = document.createElement('div');
+  body.className = 'msg-trans-body open';
+  body.textContent = tr;
+  box.appendChild(body);
+  btn.disabled = false;
+  btn.classList.add('open');
+  label.textContent = '收起翻译';
+  btn.setAttribute('onclick', 'toggleTranslationBox(this)');
 }
 
 function switchViewerLang(lang, el, id) {
@@ -13562,7 +13910,7 @@ streamAIReply = async function(messages, systemPrompt) {
         // 用后端高亮替代AI标记
         var highlightedHtml = highlightVocabInReply(parsed.text, chatVocabList);
         appendMessage('received', highlightedHtml, true);
-        if (parsed.translation) attachTranslationToLastMsg(parsed.translation);
+        var msgRow = lastMsgRow();
 
         // 清除【】标记后存入消息历史（纯文本）
         var cleanContent = parsed.text.replace(/【([^】]+)】/g, '$1');
@@ -13571,6 +13919,13 @@ streamAIReply = async function(messages, systemPrompt) {
         if (parsed.translation) msg.translation = parsed.translation;
         chatMessages.push(msg);
         saveMsgToHistory(currentChatChar.id, Object.assign({}, msg, { sessionType: chatSessionType }));
+
+        if (parsed.translation) {
+          attachTranslationToRow(msgRow, buildTranslationBox(parsed.translation));
+        } else if (isTranslationOn() && needsTranslation(parsed.text)) {
+          // AI 没按 [[TR]] 标记输出，但说的确实是外语：直接调接口翻译
+          autoTranslateRow(msgRow, cleanContent, msg);
+        }
 
         if (currentChatChar) {
           appendToMemoryBuffer(currentChatChar.id, { role: 'assistant', content: cleanContent, ts: ts });
@@ -13855,6 +14210,60 @@ function stripTranslations(raw) {
   return String(raw == null ? '' : raw).replace(/\[\[TR\]\][\s\S]*?(?:\[\[\/TR\]\]|$)/gi, '').trim();
 }
 
+// 这段文本是不是"外语"（相对用户母语而言），需要翻译
+function needsTranslation(text) {
+  const t = String(text == null ? '' : text).replace(/\s+/g, '');
+  // 太短的应答（ok / yes / 哈哈）不值得单独调一次翻译
+  if (t.length < 4) return false;
+  const native = getNativeLang();
+  if (native === getLearnLang()) return false;
+
+  const count = re => (t.match(re) || []).length;
+  const cjk = count(/[\u4e00-\u9fff]/g);
+  const kana = count(/[\u3040-\u30ff]/g);
+  const hangul = count(/[\uac00-\ud7af]/g);
+  const latin = count(/[A-Za-z\u00c0-\u024f\u0400-\u04ff]/g);
+  const foreign = kana + hangul + latin;
+
+  if (native === 'zh') return cjk / t.length < 0.35 && foreign > 0;
+  if (native === 'ja') return (kana + cjk) / t.length < 0.3 && (hangul + latin) > 0;
+  if (native === 'ko') return hangul / t.length < 0.3 && (cjk + kana + latin) > 0;
+  return cjk + kana + hangul > 0;
+}
+
+const _translationCache = {};
+
+// 让模型直接把这条消息翻成母语（AI 没按 [[TR]] 标记输出时的兜底）
+async function requestTranslation(text) {
+  const key = String(text || '');
+  if (_translationCache[key]) return _translationCache[key];
+  const preset = getApiPreset();
+  if (!preset || !key.trim()) return '';
+  const nativeName = getLangName(getNativeLang());
+  try {
+    const res = await fetch(preset.url + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + preset.key },
+      body: JSON.stringify({
+        model: preset.model || 'gpt-3.5-turbo',
+        temperature: 0.2,
+        messages: [
+          { role: 'system', content: '你是翻译引擎。把用户发来的内容翻译成' + nativeName
+              + '。只输出译文本身：不要解释、不要加引号、不要重复原文、不要加任何前后缀。' },
+          { role: 'user', content: key }
+        ]
+      })
+    });
+    const data = await res.json();
+    let out = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+    out = out.trim().replace(/^["“「]|["”」]$/g, '').trim();
+    if (out) _translationCache[key] = out;
+    return out;
+  } catch (e) {
+    return '';
+  }
+}
+
 function toggleTranslationBox(btn) {
   const box = btn.parentElement;
   const body = box.querySelector('.msg-trans-body');
@@ -13905,25 +14314,95 @@ function isStickerContent(content) {
   return /^\[[^\]]*发送了一个表情包/.test(String(content || ''));
 }
 
-// 给聊天区最后一条消息挂上翻译
-function attachTranslationToLastMsg(translation) {
-  if (!translation) return false;
-  const messagesEl = document.getElementById('chat-messages');
-  const rows = messagesEl.querySelectorAll('.msg-row');
-  const row = rows[rows.length - 1];
-  if (!row) return false;
+// 把翻译（或"点击翻译"入口）挂到某一行消息下面
+function attachTranslationToRow(row, node) {
+  if (!row || !node) return false;
   const bubble = row.querySelector('.msg-bubble');
   if (!bubble || !bubble.parentElement) return false;
   const wrap = bubble.parentElement;
-  const existing = wrap.querySelector('.msg-translation');
-  const box = buildTranslationBox(translation);
-  if (existing) wrap.replaceChild(box, existing);
+  const existing = wrap.querySelector('.msg-translation, .msg-trans-pending');
+  if (existing) wrap.replaceChild(node, existing);
   else {
     const timeEl = wrap.querySelector('.msg-time');
-    if (timeEl) wrap.insertBefore(box, timeEl);
-    else wrap.appendChild(box);
+    if (timeEl) wrap.insertBefore(node, timeEl);
+    else wrap.appendChild(node);
   }
   return true;
+}
+
+function lastMsgRow() {
+  const rows = document.getElementById('chat-messages').querySelectorAll('.msg-row');
+  return rows[rows.length - 1] || null;
+}
+
+function attachTranslationToLastMsg(translation) {
+  if (!translation) return false;
+  return attachTranslationToRow(lastMsgRow(), buildTranslationBox(translation));
+}
+
+function buildTranslatingBox() {
+  const box = document.createElement('div');
+  box.className = 'msg-trans-pending';
+  box.innerHTML = '<span class="msg-trans-loading">翻译中…</span>';
+  return box;
+}
+
+// "点击翻译"入口：历史消息不自动调接口，用户想看再翻
+function buildTranslateOnDemandBox(text, onDone) {
+  const box = document.createElement('div');
+  box.className = 'msg-translation';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'msg-trans-toggle';
+  btn.innerHTML = '<span class="arrow">▸</span><span class="label">翻译</span>';
+  btn.addEventListener('click', async function(e) {
+    e.stopPropagation();
+    const label = btn.querySelector('.label');
+    label.textContent = '翻译中…';
+    btn.disabled = true;
+    const tr = await requestTranslation(text);
+    const row = box.closest('.msg-row');
+    if (!tr) {
+      label.textContent = '翻译失败，点我重试';
+      btn.disabled = false;
+      return;
+    }
+    attachTranslationToRow(row, buildTranslationBox(tr, true));
+    if (typeof onDone === 'function') onDone(tr);
+  });
+  box.appendChild(btn);
+  return box;
+}
+
+// 收到外语消息但 AI 没给 [[TR]] 时，自己调一次翻译补上
+async function autoTranslateRow(row, text, msgRef) {
+  if (!row || !text) return;
+  attachTranslationToRow(row, buildTranslatingBox());
+  const tr = await requestTranslation(text);
+  if (!tr) {
+    attachTranslationToRow(row, buildTranslateOnDemandBox(text, t => applyTranslationToMsg(msgRef, t)));
+    return;
+  }
+  attachTranslationToRow(row, buildTranslationBox(tr));
+  applyTranslationToMsg(msgRef, tr);
+}
+
+// 把补出来的译文写回内存消息与持久化历史
+function applyTranslationToMsg(msgRef, translation) {
+  if (!msgRef || !translation) return;
+  msgRef.translation = translation;
+  if (!currentChatChar || !msgRef.ts) return;
+  try {
+    const key = getChatHistoryKey(currentChatChar.id);
+    const all = JSON.parse(localStorage.getItem(key) || '[]');
+    for (let i = all.length - 1; i >= 0; i--) {
+      if (all[i].ts === msgRef.ts && all[i].role === msgRef.role) {
+        all[i].translation = translation;
+        localStorage.setItem(key, JSON.stringify(all));
+        break;
+      }
+    }
+  } catch (e) {}
 }
 
 // 一键展开 / 折叠全部翻译
@@ -14396,10 +14875,10 @@ function resetSpellingArea() {
     if (ph) ph.textContent = '';
     const msg = document.getElementById('spelling-msg');
     if (msg) { msg.textContent = ''; msg.style.color = ''; }
-    spellingState = { active: false, target: '', raw: '', missed: false, solved: false };
+    spellingState = { active: false, target: '', raw: '', missed: false, solved: false, mode: 'inline' };
 }
 
-function startSpellingFor(word) {
+function startSpellingFor(word, mode) {
     const area = document.getElementById('spelling-area');
     if (!area) return;
     spellingState = {
@@ -14407,7 +14886,8 @@ function startSpellingFor(word) {
         target: normalizeSpelling(word),
         raw: String(word || ''),
         missed: false,
-        solved: false
+        solved: false,
+        mode: mode || 'inline'      // 'stage' = 作为最后一关，答完直接结算
     };
     area.style.display = 'block';
     const input = document.getElementById('spelling-input');
@@ -14457,10 +14937,14 @@ function checkSpelling(val) {
         spellingState.active = false;
         el.disabled = true;
         if (window.navigator.vibrate) window.navigator.vibrate(30);
-        setTimeout(() => {
-            el.blur();
-            document.getElementById('study-btns-know').style.display = 'flex';
-        }, 250);
+        el.blur();
+        if (spellingState.mode === 'stage') {
+            // 拼写关：拼对就直接过关，不用再点"认识"
+            document.getElementById('study-word').textContent = spellingState.raw;
+            finishSpellingStage(true);
+        } else {
+            setTimeout(() => { document.getElementById('study-btns-know').style.display = 'flex'; }, 250);
+        }
         return;
     }
 
@@ -14483,7 +14967,7 @@ function checkSpelling(val) {
 function onSpellingKeydown(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
-        if (spellingState.solved) answerWord(true);
+        if (spellingState.solved) { if (spellingState.mode !== 'stage') answerWord(true); }
         else revealSpellingAnswer();
     }
 }
@@ -14503,7 +14987,13 @@ function revealSpellingAnswer() {
     msg.style.color = 'var(--danger)';
     msg.textContent = '答案：' + spellingState.raw;
     el.blur();
-    document.getElementById('study-btns-know').style.display = 'flex';
+    if (spellingState.mode === 'stage') {
+        document.getElementById('study-word').textContent = spellingState.raw;
+        document.getElementById('study-word').classList.remove('masked');
+        finishSpellingStage(false);
+    } else {
+        document.getElementById('study-btns-know').style.display = 'flex';
+    }
 }
 
 function syncScreenTime() {
@@ -14521,7 +15011,97 @@ openSubPage = function(id) {
         updateFocusUI();
     }
     if (id === 'lang-settings') initLangSettings();
+    if (id === 'memory-curve') initMemoryCurvePage();
+    if (id === 'study-settings') initStudySettings();
 };
+
+function initMemoryCurvePage() {
+    const a = analyzeForgettingCurve();
+    const s = DB.get('appSettings') || {};
+    document.getElementById('mem-samples').textContent = a.samples;
+    document.getElementById('mem-retention').textContent =
+        a.overall === null ? '—' : Math.round(a.overall * 100) + '%';
+    document.getElementById('mem-halflife').textContent =
+        a.halfLife ? (a.halfLife < 1 ? (a.halfLife * 24).toFixed(1) + ' 小时' : a.halfLife.toFixed(1) + ' 天') : '数据不足';
+    document.getElementById('mem-factor').textContent = a.factor.toFixed(2);
+    document.getElementById('setting-adaptive-srs').value = s.adaptiveSrs === false ? 'false' : 'true';
+    document.getElementById('memory-chart').innerHTML = renderForgettingChart(a);
+
+    const progress = DB.get('wordProgress') || {};
+    const known = Object.keys(progress).filter(k => progress[k] && progress[k].knownByUser).length;
+    document.getElementById('mem-known-count').textContent = known + ' 个';
+}
+
+function renderForgettingChart(a) {
+    const W = 300, H = 150, PAD_L = 30, PAD_B = 22, PAD_T = 10, PAD_R = 8;
+    const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+    const maxT = Math.max(14, ...a.bins.map(b => b.sumT / b.n)) * 1.15;
+    const x = t => PAD_L + (t / maxT) * plotW;
+    const y = r => PAD_T + (1 - r) * plotH;
+
+    let grid = '';
+    [0, 0.5, 1].forEach(r => {
+        grid += `<line x1="${PAD_L}" y1="${y(r)}" x2="${W - PAD_R}" y2="${y(r)}" stroke="var(--border-color)" stroke-width="1"/>`
+             +  `<text x="${PAD_L - 5}" y="${y(r) + 4}" font-size="9" fill="var(--text-muted)" text-anchor="end">${Math.round(r * 100)}%</text>`;
+    });
+    grid += `<text x="${PAD_L}" y="${H - 6}" font-size="9" fill="var(--text-muted)">0天</text>`
+         +  `<text x="${W - PAD_R}" y="${H - 6}" font-size="9" fill="var(--text-muted)" text-anchor="end">${Math.round(maxT)}天</text>`;
+
+    let curve = '';
+    if (a.stability) {
+        const pts = [];
+        for (let i = 0; i <= 60; i++) {
+            const t = (i / 60) * maxT;
+            pts.push(x(t).toFixed(1) + ',' + y(Math.exp(-t / a.stability)).toFixed(1));
+        }
+        curve = `<polyline points="${pts.join(' ')}" fill="none" stroke="var(--text-main)" stroke-width="2" stroke-linecap="round"/>`;
+    }
+
+    const dots = a.bins.map(b => {
+        const t = b.sumT / b.n, r = b.ok / b.n;
+        const rad = Math.min(6, 2.5 + Math.sqrt(b.n));
+        return `<circle cx="${x(t).toFixed(1)}" cy="${y(r).toFixed(1)}" r="${rad.toFixed(1)}" fill="var(--text-muted)" opacity="0.55"><title>${b.label}：${b.ok}/${b.n} 正确</title></circle>`;
+    }).join('');
+
+    const empty = a.samples === 0
+        ? `<text x="${W / 2}" y="${H / 2}" font-size="11" fill="var(--text-muted)" text-anchor="middle">还没有复习记录，背几天就会出现</text>`
+        : '';
+
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">${grid}${curve}${dots}${empty}</svg>`;
+}
+
+function saveMemorySettings() {
+    const s = DB.get('appSettings') || {};
+    s.adaptiveSrs = document.getElementById('setting-adaptive-srs').value === 'true';
+    DB.set('appSettings', s);
+    initMemoryCurvePage();
+}
+
+function resetMemoryModel() {
+    if (!confirm('清空遗忘曲线样本并把间隔系数恢复为 1.00？单词进度不受影响。')) return;
+    DB.set('reviewLog', []);
+    const s = DB.get('appSettings') || {};
+    s.memoryFactor = 1;
+    delete s.memoryObserved;
+    DB.set('appSettings', s);
+    initMemoryCurvePage();
+}
+
+function restoreKnownWords() {
+    const progress = DB.get('wordProgress') || {};
+    const keys = Object.keys(progress).filter(k => progress[k] && progress[k].knownByUser);
+    if (!keys.length) return alert('还没有标记过「已熟识」的词');
+    if (!confirm('把 ' + keys.length + ' 个已熟识的词恢复到复习队列？')) return;
+    keys.forEach(k => {
+        delete progress[k].knownByUser;
+        progress[k].nextReview = Date.now();
+    });
+    DB.set('wordProgress', progress);
+    initMemoryCurvePage();
+    _lastWordsTabWbId = null;
+    initWordsTab();
+    alert('已恢复 ' + keys.length + ' 个词');
+}
 
 function initLangSettings() {
     const s = DB.get('appSettings') || {};
@@ -14596,21 +15176,8 @@ function saveLangSettings() {
     if (typeof updateTranslationMenuLabel === 'function') updateTranslationMenuLabel();
 }
 
-// 拦截原有的 tapStudyCard 增加拼写触发
-const _baseTap = tapStudyCard;
-tapStudyCard = function() {
-    const cardEl = document.getElementById('study-card');
-    if (cardEl.dataset.revealed === 'true') return;
-    if (!cardEl.dataset.word) return;
-    _baseTap();
-    const s = DB.get('appSettings') || {};
-    if (!s.spellingEnabled) return;
-    const wordData = JSON.parse(cardEl.dataset.word);
-    // 拼写模式对中日韩这类非拼音文字意义不大，自动跳过
-    if (/[\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af]/.test(wordData.word || '')) return;
-    document.getElementById('study-btns-know').style.display = 'none';
-    startSpellingFor(wordData.word);
-};
+// 拼写不再在翻卡时触发：它现在是识别环节全部通过之后的最后一关，
+// 由 showCurrentWord → showSpellingStage 调度。
 
 
 /* --- V2 补丁逻辑 --- */
@@ -14747,6 +15314,50 @@ buildChatSystemPrompt = function(done) {
                 <option value="true">开启</option>
                 <option value="false">关闭</option>
             </select>
+        </div>
+    </div>
+</div>
+<div id="memory-curve" class="sub-page">
+    <div class="sub-page-header">
+        <span class="back-btn" onclick="closeSubPage('memory-curve')">返回</span>
+        <span class="page-title">记忆曲线与算法</span>
+        <span style="width:44px;"></span>
+    </div>
+    <div class="sub-page-content">
+        <div class="form-group">
+            <label>你的遗忘曲线</label>
+            <p class="note">横轴是距离上次复习的天数，纵轴是当时还能答对的比例。
+               灰点是你的真实数据，曲线是据此拟合出的记忆保持曲线。</p>
+            <div id="memory-chart" style="margin-top:10px;"></div>
+        </div>
+        <div class="form-group">
+            <div class="progress-stats" style="margin-top:0;">
+                <span>样本数 <b id="mem-samples">0</b></span>
+                <span>按时复习正确率 <b id="mem-retention">—</b></span>
+            </div>
+            <div class="progress-stats" style="margin-top:8px;">
+                <span>记忆半衰期 <b id="mem-halflife">—</b></span>
+                <span>间隔系数 <b id="mem-factor">1.00</b></span>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>自适应复习间隔</label>
+            <p class="note">开启后会持续对比你的实际正确率与目标值（90%）：
+               记得比预期牢就自动拉长间隔，忘得比预期快就缩短，少背无用的重复。
+               需要约 20 条复习记录才开始生效。</p>
+            <select id="setting-adaptive-srs" onchange="saveMemorySettings()">
+                <option value="true">开启（推荐）</option>
+                <option value="false">关闭，使用标准 SM-2 间隔</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>已熟识的词</label>
+            <p class="note">在背词页点「已熟识」标记过的词不会再出现。</p>
+            <div id="mem-known-count" style="font-size:15px;font-weight:600;padding:4px 0 10px;">0 个</div>
+            <button class="btn" style="width:100%;background:#F3F4F6;color:var(--text-main);" onclick="restoreKnownWords()">全部恢复学习</button>
+        </div>
+        <div class="form-group">
+            <button class="btn" style="width:100%;background:#F3F4F6;color:var(--text-main);" onclick="resetMemoryModel()">重置遗忘曲线数据</button>
         </div>
     </div>
 </div>
